@@ -1,0 +1,200 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: {{NAME}}\n"
+"POT-Creation-Date: 2024-07-09 16:20+0200\n"
+"PO-Revision-Date: 2024-07-09 16:24+0200\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.3\n"
+"X-Poedit-Basepath: ..\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Poedit-Flags-xgettext: --add-comments=translators:\n"
+"X-Poedit-WPHeader: style.css\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
+"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;"
+"_n_noop:1,2;_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.min.js\n"
+
+#: elementor/widgets/map.php:39
+msgid "Configuration"
+msgstr "Configuration"
+
+#: elementor/widgets/map.php:46
+msgid "Auto center"
+msgstr "Centre auto"
+
+#: elementor/widgets/map.php:56 elementor/widgets/map.php:290
+msgid "Center"
+msgstr "Centre"
+
+#: elementor/widgets/map.php:74
+msgid "Zoom Level"
+msgstr "Niveau de zoom"
+
+#: elementor/widgets/map.php:91
+msgid "Pitch"
+msgstr "Pitch"
+
+#: elementor/widgets/map.php:108
+msgid "Bearing"
+msgstr "Roulement"
+
+#: elementor/widgets/map.php:125
+msgid "Height"
+msgstr "Hauteur"
+
+#: elementor/widgets/map.php:157
+msgid "Prevent Scroll"
+msgstr "Empêcher le défilement"
+
+#: elementor/widgets/map.php:167
+msgid "Show POIs"
+msgstr "Afficher les points d’intérêt"
+
+#: elementor/widgets/map.php:177
+msgid "Show zoom control"
+msgstr "Afficher le contrôle du zoom"
+
+#: elementor/widgets/map.php:187
+msgid "Zoom when double click"
+msgstr "Zoom lors d’un double-clic"
+
+#: elementor/widgets/map.php:197
+msgid "Available drag the map"
+msgstr "Disponible en faisant glisser la carte"
+
+#: elementor/widgets/map.php:207
+msgid "Token"
+msgstr "Token"
+
+#: elementor/widgets/map.php:215
+msgid "Style"
+msgstr "Style"
+
+#: elementor/widgets/map.php:215
+msgid "Get styles"
+msgstr "Obtenir des styles"
+
+#: elementor/widgets/map.php:217
+msgid "Url"
+msgstr "Url"
+
+#: elementor/widgets/map.php:226 elementor/widgets/map.php:310
+msgid "Markers"
+msgstr "Marqueurs"
+
+#: elementor/widgets/map.php:234
+msgid "Group markers"
+msgstr "Group markers"
+
+#: elementor/widgets/map.php:246
+msgid "Coordinates"
+msgstr "Coordonnées"
+
+#: elementor/widgets/map.php:255
+msgid "Choose icon"
+msgstr "Choisir l'icône"
+
+#: elementor/widgets/map.php:263
+msgid "Size"
+msgstr "Taille"
+
+#: elementor/widgets/map.php:282
+msgid "Position"
+msgstr "Position"
+
+#: elementor/widgets/map.php:286
+msgid "Top left"
+msgstr "En haut à gauche"
+
+#: elementor/widgets/map.php:287
+msgid "Top center"
+msgstr "Haut centre"
+
+#: elementor/widgets/map.php:288
+msgid "Top right"
+msgstr "En haut à droite"
+
+#: elementor/widgets/map.php:289
+msgid "Center left"
+msgstr "Centre gauche"
+
+#: elementor/widgets/map.php:291
+msgid "Center right"
+msgstr "Centre droite"
+
+#: elementor/widgets/map.php:292
+msgid "Bottom left"
+msgstr "En bas à gauche"
+
+#: elementor/widgets/map.php:293
+msgid "Bottom center"
+msgstr "En bas au centre"
+
+#: elementor/widgets/map.php:294
+msgid "Bottom right"
+msgstr "En bas à droite"
+
+#: elementor/widgets/map.php:302
+msgid "HTML content"
+msgstr "Contenu HTML"
+
+#: functions.php:154
+msgid "There are errors in the form. Please correct them before continuing."
+msgstr ""
+"Le formulaire contient des erreurs. Veuillez les corriger avant de "
+"continuer."
+
+#: functions.php:155
+msgid "Fill in the marked fields."
+msgstr "Remplissez les champs marqués d'un astérisque."
+
+#: functions.php:156
+msgid "You must accept the legal notice."
+msgstr "Vous devez accepter l'avis de droit."
+
+#: functions.php:157
+msgid "Invalid email address"
+msgstr "Adresse électronique invalide"
+
+#: functions.php:415
+msgid "Withdrawal"
+msgstr "Retrait"
+
+#: functions/elementor.dynamic.php:25
+msgid "Taxonomy image"
+msgstr "Image de la taxonomie"
+
+#: functions/elementor.dynamic.php:62 functions/elementor.dynamic.php:138
+msgid "Taxonomy"
+msgstr "Taxonomie"
+
+#: functions/elementor.dynamic.php:70 functions/elementor.dynamic.php:146
+msgid "Field"
+msgstr "Champ"
+
+#: functions/elementor.dynamic.php:101
+msgid "Taxonomy text"
+msgstr "Texte de la taxonomie"
+
+#. Theme Name of the plugin/theme
+msgid "{{NAME}}"
+msgstr ""
+
+#. Description of the plugin/theme
+msgid "Personalización web para {{NAME}}."
+msgstr ""
+
+#. Author of the plugin/theme
+msgid "Orenes Grupo / Samuel E. Cerezo"
+msgstr ""
+
+#. Author URI of the plugin/theme
+msgid "https://orenes.net"
+msgstr ""
