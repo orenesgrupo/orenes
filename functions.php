@@ -287,7 +287,7 @@ add_filter('wp_check_filetype_and_ext', function($data, $file, $filename, $mimes
 		'proper_filename' => $data['proper_filename']
 	);
 
-}, 10, 4 );
+}, 10, 4);
 
 add_filter('upload_mimes', function($mimes) {
 
@@ -416,7 +416,76 @@ add_action('init', function() {
 
 	}
 
+	$dir = get_stylesheet_directory().'/.git';
+
+	if (is_dir($dir)) {
+
+		remove_dir_recursively($git_dir);
+
+	}
+
+	remove_files(get_stylesheet_directory(), '.DS_Store');
+
 });
+
+function remove_dir_recursively($dir) {
+
+	$dir = rtrim($dir, '/');
+
+	if (! is_dir($dir)) {
+		return;
+	}
+
+	foreach (scandir($dir) as $item) {
+
+		if ($item === '.' || $item === '..') {
+			continue;
+		}
+
+		$path = $dir . '/' . $item;
+
+		if (is_dir($path)) {
+			remove_dir_recursively($path);
+		} else {
+			unlink($path);
+		}
+	}
+
+	rmdir($dir);
+
+}
+
+function remove_files($dir, $filename) {
+
+	$dir = rtrim($dir, '/');
+
+	if (!is_dir($dir)) {
+		return;
+	}
+
+	$items = scandir($dir);
+
+	foreach ($items as $item) {
+
+		if ($item === '.' || $item === '..') {
+			continue;
+		}
+
+		$path = $dir . '/' . $item;
+
+		if (is_dir($path)) {
+
+			remove_files($path, $filename);
+
+		} elseif ($item === $filename) {
+
+			unlink($path);
+
+		}
+
+	}
+
+}
 
 
 // Modificamos el archivo style.css con la información del sitio
