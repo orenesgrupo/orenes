@@ -71,7 +71,9 @@ add_action('admin_init', function() {
 				'https://*.facebook.net',
 				'https://www.recaptcha.net',
 				'https://www.gstatic.com/recaptcha/',
-				'https://*.mapbox.com'
+				'https://*.mapbox.com',
+				'https://*.intercom.io',
+				'https://*.intercomcdn.com'
 			),
 			'connect-src' => array(
 				'self',
@@ -93,7 +95,9 @@ add_action('admin_init', function() {
 				'https://*.google.es',
 				'https://*.wpo365.com',
 				'https://www.recaptcha.net',
-				'https://*.mapbox.com'
+				'https://*.mapbox.com',
+				'https://*.intercom.io',
+				'wss://*.intercom.io'
 			),
 			'img-src' => array(
 				'self',
@@ -105,11 +109,13 @@ add_action('admin_init', function() {
 				'https://pagead2.googlesyndication.com',
 				'https://googleads.g.doubleclick.net',
 				'https://*.googleadservices.com',
+				'https://*.gtranslate.net',
 				'https://*.doubleclick.net',
 				'https://*.wpo365.com',
 				'https://*.facebook.com',
 				'https://*.google.com',
-				'https://*.google.es'
+				'https://*.google.es',
+				'https://*.ytimg.com'
 			),
 			'style-src' => array(
 				'self',
@@ -125,13 +131,16 @@ add_action('admin_init', function() {
 				'data:',
 				'https://*.sharepointonline.com',
 				'https://*.akamaihd.net',
-				'https://*.office.net'
+				'https://*.office.net',
+				'https://*.gstatic.com',
+				'https://*.intercomcdn.com'
 			),
 			'media-src' => array(
 				'self',
 				'blob:',
 				'data:',
-				trim(site_url(), '/')
+				trim(site_url(), '/'),
+				'https://*.archive.org'
 			),
 			'frame-src' => array(
 				'self',
@@ -139,12 +148,14 @@ add_action('admin_init', function() {
 				trim(site_url(), '/'),
 				'https://www.google.com',
 				'https://*.youtube.com',
+				'https://*.youtube-nocookie.com',
 				'https://*.covermanager.com',
 				'https://tpc.googlesyndication.com',
 				'https://*.doubleclick.net',
 				'https://*.googletagmanager.com',
 				'https://www.google.com/recaptcha/',
-				'https://www.recaptcha.net'
+				'https://www.recaptcha.net',
+				'https://archive.org'
 			),
 			'style-src-elem' => array(
 				'self',
