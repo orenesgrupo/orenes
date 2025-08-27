@@ -315,9 +315,9 @@ add_action('wp_enqueue_scripts', function() {
 
 	wp_enqueue_style('style', get_template_directory_uri().'/style.css', array(), uniqid());
 
-	wp_enqueue_style('fonts', get_template_directory_uri().'/fonts/css.php', array(), uniqid());
+	wp_enqueue_style('fonts', get_stylesheet_directory_uri().'/fonts/css.php', array(), uniqid());
 
-	foreach (array_diff(scandir(get_template_directory().'/scss'), array('.', '..')) as $file) {
+	foreach (array_diff(scandir(get_stylesheet_directory().'/scss'), array('.', '..')) as $file) {
 
 		$ext = end(explode('.', $file));
 
@@ -497,35 +497,6 @@ function remove_files($dir, $filename) {
 	}
 
 }
-
-
-// Modificamos el archivo style.css con la información del sitio
-
-add_action('after_switch_theme', function() {
-
-	$file = get_stylesheet_directory().'/style.css';
-
-	$name = get_option('blogname');
-
-	if (false === $name) {
-		return;
-	}
-
-	if (!file_exists($file) || !is_writable($file)) {
-		return;
-	}
-
-	$content = file_get_contents($file);
-
-	if (false === $content) {
-		return;
-	}
-
-	$content = str_replace('{{NAME}}', $name, $content);
-
-	file_put_contents($file, $content);
-
-});
 
 
 // Creamos el archivo principal SCSS si no existe
