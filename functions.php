@@ -721,6 +721,7 @@ add_action('elementor/frontend/the_content', function($content) {
 
 // Cargamos las funciones extras del tema
 
+directory_include(get_template_directory().'/functions');
 directory_include(get_stylesheet_directory().'/functions');
 
 ?>
