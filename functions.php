@@ -90,6 +90,14 @@ add_action('send_headers', function () {
 	}
 
 	header('Content-Security-Policy: '.implode('; ', $lines));
+
+	/* Ejemplo en child:
+	add_filter('csp_policies', function ($policies) {
+		$policies['img-src'][] = 'https://mi.cdn.com';
+		$policies['script-src'][] = 'https://cdn.miapp.com';
+		return $policies;
+	});
+	*/
 });
 
 // Utilidades comunes
@@ -291,6 +299,17 @@ add_action('elementor/frontend/the_content', function ($content) {
 
 	return $content;
 });
+
+/*
+// Ejemplos:
+// add_filter('content_placeholders', function ($r) { $r['{{site}}'] = esc_html(get_bloginfo('name')); return $r; });
+// add_filter('content_links', function ($resolver) {
+// 	return function ($kind, $id) use ($resolver) {
+// 		if (strtolower($kind) === 'user') { return get_author_posts_url((int) $id) ?: null; }
+// 		return $resolver($kind, (int) $id);
+// 	};
+// });
+*/
 
 // Carga recursiva de funciones
 function directory_include(string $dir, bool $recursive = true): void {
