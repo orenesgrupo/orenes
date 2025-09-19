@@ -1,4 +1,4 @@
-# Orenes Theme
+# Grupo Orenes WordPress Theme
 
 Tema padre para WordPress desarrollado por **Samuel E. Cerezo** para el Grupo Orenes.  
 Diseñado como un **naked theme** optimizado, con integración con Elementor y soporte extendido para SCSS, tipografías y recursos modernos.
@@ -17,8 +17,9 @@ Diseñado como un **naked theme** optimizado, con integración con Elementor y s
 
 - **Soporte completo para Elementor**  
   - Plantillas traducibles con Polylang.  
-  - Etiquetas dinámicas personalizadas (ejemplo: campos ACF de taxonomías).  
-  - Widgets personalizados (ejemplo: **Mapbox Map**).
+  - Etiquetas dinámicas personalizadas.  
+  - Widgets personalizados:
+    - **Mapbox Map** inserta un mapa dinámico basado en la librería **Mapbox GL JS**
 
 - **Seguridad y limpieza**  
   - Encabezados CSP configurables vía filtros.  
@@ -155,6 +156,15 @@ add_filter('fonts_cleanup_extensions', function ($ext) {
 
 GPL-2.0 o posterior.  
 Este tema está distribuido con la misma licencia que WordPress.
+
+---
+
+## Librerías usadas
+
+[SCSSPHP 2.0.1](https://scssphp.github.io/scssphp/), 
+[Mapbox GL JS 3.15.0](https://docs.mapbox.com/mapbox-gl-js/guides), 
+[animejs 4.1.3](https://animejs.com/), 
+[WOW.js 1.3.0](https://wowjs.uk/) 
 
 ---
 
