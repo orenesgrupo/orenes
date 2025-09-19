@@ -1,38 +1,21 @@
 <?php
-
 namespace Orenes\Widgets;
 
 use Elementor\Controls_Manager;
 use Elementor\Repeater;
 use Elementor\Widget_Base;
 
-if (!defined('ABSPATH')) {
-	exit;
-}
+if (!defined('ABSPATH')) { exit; }
 
 class Mapbox_Map extends Widget_Base {
 
-	public function get_name() {
-		return 'mapbox_map';
-	}
+	public function get_name() { return 'mapbox_map'; }
+	public function get_title() { return 'Mapbox'; }
+	public function get_icon() { return 'eicon-google-maps'; }
+	public function get_categories() { return ['orenes']; }
+	public function get_script_depends() { return ['jquery']; }
 
-	public function get_title() {
-		return 'Mapbox';
-	}
-
-	public function get_icon() {
-		return 'eicon-google-maps';
-	}
-
-	public function get_categories() {
-		return ['orenes'];
-	}
-
-	public function get_script_depends() {
-		return ['jquery'];
-	}
-
-	protected function _register_controls() {
+	protected function register_controls() {
 		$this->start_controls_section('section_config', [
 			'label' => __('Configuration', 'orenes'),
 		]);
@@ -45,12 +28,11 @@ class Mapbox_Map extends Widget_Base {
 		]);
 
 		$this->add_control('center', [
-			'label' => __('Center', 'elementor'),
+			'label' => __('Center [lng,lat]', 'orenes'),
 			'type' => Controls_Manager::TEXT,
 			'label_block' => true,
-			'condition' => [
-				'autocenter!' => 'yes',
-			],
+			'condition' => ['autocenter!' => 'yes'],
+			'placeholder' => '-0.3763,39.4699',
 		]);
 
 		$this->add_control('zoom', [
@@ -64,29 +46,27 @@ class Mapbox_Map extends Widget_Base {
 			'label' => __('Pitch', 'orenes'),
 			'type' => Controls_Manager::SLIDER,
 			'default' => ['size' => 0],
-			'range' => ['px' => ['min' => 0, 'max' => 360]],
+			'range' => ['px' => ['min' => 0, 'max' => 85]],
 		]);
 
 		$this->add_control('bearing', [
 			'label' => __('Bearing', 'orenes'),
 			'type' => Controls_Manager::SLIDER,
 			'default' => ['size' => 0],
-			'range' => ['px' => ['min' => 0, 'max' => 90]],
+			'range' => ['px' => ['min' => 0, 'max' => 360]],
 		]);
 
 		$this->add_responsive_control('height', [
 			'label' => __('Height', 'orenes'),
 			'type' => Controls_Manager::SLIDER,
-			'default' => ['size' => 300],
+			'default' => ['size' => 300, 'unit' => 'px'],
 			'size_units' => ['px', 'vh', 'vw'],
 			'range' => [
 				'px' => ['min' => 10, 'max' => 1000, 'step' => 10],
 				'vh' => ['min' => 10, 'max' => 100, 'step' => 1],
 				'vw' => ['min' => 10, 'max' => 100, 'step' => 1],
 			],
-			'selectors' => [
-				'{{WRAPPER}} .map-wrapper' => 'height: {{SIZE}}{{UNIT}};',
-			],
+			'selectors' => ['{{WRAPPER}} .map-wrapper' => 'height: {{SIZE}}{{UNIT}};'],
 		]);
 
 		$this->add_control('scroll', [
@@ -132,7 +112,7 @@ class Mapbox_Map extends Widget_Base {
 		$this->add_control('style', [
 			'label' => __('Style', 'orenes'),
 			'type' => Controls_Manager::TEXT,
-			'placeholder' => __('mapbox://styles/mapbox/streets-v9', 'orenes'),
+			'placeholder' => __('mapbox://styles/mapbox/streets-v12', 'orenes'),
 		]);
 
 		$this->end_controls_section();
@@ -153,39 +133,29 @@ class Mapbox_Map extends Widget_Base {
 			'type' => Controls_Manager::SLIDER,
 			'size_units' => ['px'],
 			'default' => ['size' => 40],
-			'range' => [
-				'px' => ['min' => 10, 'max' => 200, 'step' => 1],
-			],
-			'selectors' => [], // No aplicamos CSS directo, lo usamos en JS
+			'range' => ['px' => ['min' => 10, 'max' => 200, 'step' => 1]],
 		]);
 
 		$repeater = new Repeater();
-
 		$repeater->add_control('address', [
-			'label' => __('Coordinates (lng,lat)', 'orenes'),
+			'label' => __('Coordinates [lng,lat]', 'orenes'),
 			'type' => Controls_Manager::TEXT,
+			'placeholder' => '-0.3763,39.4699',
 		]);
-
 		$repeater->add_control('icon', [
 			'label' => __('Icon', 'orenes'),
 			'type' => Controls_Manager::MEDIA,
 		]);
-
 		$repeater->add_control('info', [
 			'label' => __('Popup HTML content', 'orenes'),
 			'type' => Controls_Manager::TEXTAREA,
 		]);
-
 		$repeater->add_control('position', [
 			'label' => __('Popup anchor', 'orenes'),
 			'type' => Controls_Manager::SELECT,
 			'default' => 'bottom',
 			'options' => [
-				'top' => 'Top',
-				'bottom' => 'Bottom',
-				'left' => 'Left',
-				'right' => 'Right',
-				'center' => 'Center',
+				'top' => 'Top','bottom' => 'Bottom','left' => 'Left','right' => 'Right','center' => 'Center',
 			],
 		]);
 
@@ -200,122 +170,104 @@ class Mapbox_Map extends Widget_Base {
 	}
 
 	protected function render() {
-		$settings = $this->get_settings_for_display();
+		$s = $this->get_settings_for_display();
 		$map_id = 'map-' . $this->get_id();
-		$center = null;
 
-		if (!empty($settings['center']) && is_string($settings['center']) && strpos($settings['center'], ',') !== false) {
-			$coords = array_map('trim', explode(',', $settings['center']));
-			if (count($coords) === 2) {
-				$center = ['lng' => (float)$coords[0], 'lat' => (float)$coords[1]];
-			}
+		// Center [lng, lat]
+		$center = null;
+		if (!empty($s['center']) && is_string($s['center']) && strpos($s['center'], ',') !== false) {
+			$coords = array_map('trim', explode(',', $s['center']));
+			if (count($coords) === 2) { $center = ['lng' => (float)$coords[0], 'lat' => (float)$coords[1]]; }
 		}
 
-		wp_enqueue_script('mapbox-gl', 'https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js', [], null, true);
-		wp_enqueue_style('mapbox-gl', 'https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css');
+		// Encolar Mapbox GL
+		wp_enqueue_script('mapbox-gl', 'https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js', [], '2.14.1', true);
+		wp_enqueue_style('mapbox-gl', 'https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css', [], '2.14.1');
 
 		$features = [];
 		$bounds = [];
 
-		foreach ($settings['markers'] as $index => $marker) {
-			$coords = explode(',', $marker['address']);
-			$lat = (float) trim($coords[1]);
-			$lng = (float) trim($coords[0]);
-			$icon_id = 'marker_icon_' . $index;
+		if (!empty($s['markers']) && is_array($s['markers'])) {
+			foreach ($s['markers'] as $i => $m) {
+				if (empty($m['address']) || strpos($m['address'], ',') === false) { continue; }
+				[$lngS, $latS] = array_map('trim', explode(',', $m['address']));
+				$lng = is_numeric($lngS) ? (float)$lngS : null;
+				$lat = is_numeric($latS) ? (float)$latS : null;
+				if ($lng === null || $lat === null) { continue; }
 
-			$features[] = [
-				'type' => 'Feature',
-				'properties' => [
-					'id' => $index,
-					'html' => '<div class="marker-wrapper" data-id="' . $index . '">' . $marker['info'] . '</div>',
-					'anchor' => $marker['position'],
-					'icon' => $icon_id,
-					'icon_url' => esc_url($marker['icon']['url']),
-				],
-				'geometry' => [
-					'type' => 'Point',
-					'coordinates' => [$lat, $lng]
-				]
-			];
-
-			$bounds[] = [$lat, $lng];
+				$icon_url = !empty($m['icon']['url']) ? esc_url($m['icon']['url']) : '';
+				$features[] = [
+					'type' => 'Feature',
+					'properties' => [
+						'id' => $i,
+						'html' => '<div class="marker-wrapper" data-id="' . (int)$i . '">' . wp_kses_post($m['info'] ?? '') . '</div>',
+						'anchor' => $m['position'] ?? 'bottom',
+						'icon' => 'marker_icon_' . $i,
+						'icon_url' => $icon_url,
+					],
+					'geometry' => [
+						'type' => 'Point',
+						'coordinates' => [$lng, $lat], // [lng, lat] correcto
+					],
+				];
+				$bounds[] = [$lng, $lat];
+			}
 		}
 
-		$geojson = [
-			'type' => 'FeatureCollection',
-			'features' => $features
-		];
+		$geojson = ['type' => 'FeatureCollection', 'features' => $features];
 
-		$json_geojson = json_encode($geojson);
-		$json_bounds = json_encode($bounds);
+		$zoom    = (float)($s['zoom']['size']   ?? 10);
+		$pitch   = (float)($s['pitch']['size']  ?? 0);
+		$bearing = (float)($s['bearing']['size']?? 0);
+		$icon_px = (int)  ($s['icon_size']['size'] ?? 40);
 
 		?>
-		<div class="map-wrapper" id="<?= esc_attr($map_id) ?>"></div>
+		<div class="map-wrapper" id="<?=
+			esc_attr($map_id) ?>"></div>
 		<script>
-		jQuery(window).on('load', function () {
-			mapboxgl.accessToken = <?= json_encode($settings['token']) ?>;
-			const map_<?= $this->get_id() ?> = new mapboxgl.Map({
-				container: <?= json_encode($map_id) ?>,
-				style: <?= json_encode($settings['style'] ?: 'mapbox://styles/mapbox/streets-v9') ?>,
-				zoom: <?= (float)$settings['zoom']['size'] ?>,
-				pitch: <?= (float)$settings['pitch']['size'] ?>,
-				bearing: <?= (float)$settings['bearing']['size'] ?>,
-				scrollZoom: <?= $settings['scroll'] === 'yes' ? 'true' : 'false' ?>,
-				doubleClickZoom: <?= $settings['zoom_click'] === 'yes' ? 'true' : 'false' ?>,
-				dragPan: <?= $settings['dragging'] === 'yes' ? 'true' : 'false' ?>,
-				<?php if ($center): ?>
-				center: [<?= $center['lat'] ?>, <?= $center['lng'] ?>],
-				<?php endif; ?>
+		jQuery(function () {
+			mapboxgl.accessToken = <?= wp_json_encode($s['token'] ?? '') ?>;
+			const map = new mapboxgl.Map({
+				container: <?= wp_json_encode($map_id) ?>,
+				style: <?= wp_json_encode($s['style'] ?: 'mapbox://styles/mapbox/streets-v12') ?>,
+				zoom: <?= $zoom ?>,
+				pitch: <?= $pitch ?>,
+				bearing: <?= $bearing ?>,
+				scrollZoom: <?= ($s['scroll'] === 'yes') ? 'true' : 'false' ?>,
+				doubleClickZoom: <?= ($s['zoom_click'] === 'yes') ? 'true' : 'false' ?>,
+				dragPan: <?= ($s['dragging'] === 'yes') ? 'true' : 'false' ?>,
+				<?php if ($center): ?>center: [<?= $center['lng'] ?>, <?= $center['lat'] ?>],<?php endif; ?>
 			});
 
-			if (<?= $settings['zoom_control'] === 'yes' ? 'true' : 'false' ?>) {
-				_<?= $this->get_id() ?>.addControl(new mapboxgl.NavigationControl(), 'top-right');
+			if (<?= ($s['zoom_control'] === 'yes') ? 'true' : 'false' ?>) {
+				map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 			}
 
-			const geojson = <?= $json_geojson ?>;
+			const geojson = <?= wp_json_encode($geojson) ?>;
+			const iconSizePx = <?= (int) $icon_px ?>;
 
-			const iconSize = {
-				desktop: <?= json_encode($settings['icon_size']['size'] ?? 40) ?>,
-				tablet: <?= json_encode($settings['icon_size']['size'] ?? $settings['icon_size']['size']) ?>,
-				mobile: <?= json_encode($settings['icon_size']['size'] ?? $settings['icon_size']['size']) ?>,
-			};
-
-			function getResponsiveSize() {
-				const width = window.innerWidth;
-				if (width <= 767) return iconSize.mobile;
-				if (width <= 1024) return iconSize.tablet;
-				return iconSize.desktop;
-			}
-
-			const loadImages = geojson.features.map((feature) => {
-				return new Promise((resolve, reject) => {
-					map_<?= $this->get_id() ?>.loadImage(feature.properties.icon_url, (error, image) => {
-						if (error) {
-							console.warn('Error loading image', feature.properties.icon_url);
-							return resolve();
-						}
-						if (!map_<?= $this->get_id() ?>.hasImage(feature.properties.icon)) {
-							const scale = getResponsiveSize() / image.width;
-							map_<?= $this->get_id() ?>.addImage(feature.properties.icon, image, { pixelRatio: 1 });
-							feature.properties.icon_size = scale;
-						}
-						resolve();
-					});
+			// Cargar iconos y calcular escala
+			const loads = geojson.features.map(f => new Promise(res => {
+				if (!f.properties.icon_url) return res();
+				map.loadImage(f.properties.icon_url, (err, image) => {
+					if (!err && image && !map.hasImage(f.properties.icon)) {
+						map.addImage(f.properties.icon, image, { pixelRatio: 1 });
+						f.properties.icon_size = iconSizePx / image.width; // escala relativa
+					}
+					res();
 				});
-			});
+			}));
 
-
-			Promise.all(loadImages).then(() => {
-				map_<?= $this->get_id() ?>.addSource('markers', {
+			Promise.all(loads).then(() => {
+				map.addSource('markers', {
 					type: 'geojson',
 					data: geojson,
-					cluster: <?= ($settings['cluster'] == 'yes' ? 'true' : 'false') ?>,
+					cluster: <?= ($s['cluster'] === 'yes') ? 'true' : 'false' ?>,
 					clusterMaxZoom: 18,
 					clusterRadius: 50
 				});
 
-				// Layer para los puntos individuales
-				map_<?= $this->get_id() ?>.addLayer({
+				map.addLayer({
 					id: 'unclustered-points',
 					type: 'symbol',
 					source: 'markers',
@@ -326,8 +278,7 @@ class Mapbox_Map extends Widget_Base {
 					}
 				});
 
-				// Opcional: capa para los clusters
-				map_<?= $this->get_id() ?>.addLayer({
+				map.addLayer({
 					id: 'clusters',
 					type: 'circle',
 					source: 'markers',
@@ -338,32 +289,25 @@ class Mapbox_Map extends Widget_Base {
 					}
 				});
 
-				// Evento click para mostrar popup
-				map_<?= $this->get_id() ?>.on('click', 'unclustered-points', (e) => {
-					const props = e.features[0].properties;
-					const coordinates = e.features[0].geometry.coordinates.slice();
-					new mapboxgl.Popup({
-						anchor: props.anchor || 'bottom'
-					})
-						.setLngLat(coordinates)
-						.setHTML(props.html)
-						.addTo(map_<?= $this->get_id() ?>);
+				// Popup
+				map.on('click', 'unclustered-points', (e) => {
+					const f = e.features[0];
+					new mapboxgl.Popup({ anchor: f.properties.anchor || 'bottom' })
+						.setLngLat(f.geometry.coordinates.slice())
+						.setHTML(f.properties.html)
+						.addTo(map);
 				});
 
-				<?php if(is_null($center)): ?>
-				// Fit bounds
-				const bounds = <?= $json_bounds ?>;
-				if (bounds.length > 0) {
+				<?php if (!$center): ?>
+				// Ajuste de vista si no hay centro manual
+				const bounds = <?= wp_json_encode($bounds) ?>;
+				if (bounds.length) {
 					const bbox = new mapboxgl.LngLatBounds();
-					bounds.forEach(coord => bbox.extend(coord));
-					map_<?= $this->get_id() ?>.fitBounds(bbox, {
-						padding: 50,
-						animate: false
-					});
+					bounds.forEach(c => bbox.extend(c)); // c = [lng,lat]
+					map.fitBounds(bbox, { padding: 50, animate: false });
 				}
 				<?php endif; ?>
-			})
-
+			});
 		});
 		</script>
 		<?php

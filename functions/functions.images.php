@@ -1,74 +1,53 @@
 <?php
 
-defined('ABSPATH') or die();
-
-/* Imágenes : Conversión a WEBP y limpieza del nombre al subirlas */
-
-add_filter('wp_handle_upload', function($upload) {
-
-	if (in_array($upload['type'], ['image/jpeg', 'image/png', 'image/gif'])) {
-
-		$path = $upload['file'];
-
-		if (extension_loaded('imagick') || extension_loaded('gd')) {
-
-			$editor = wp_get_image_editor($path);
-
-			if (!is_wp_error($editor)) {
+defined('ABSPATH') || exit;
 
 
-				// Calidad de la imagen WEBP
+/* Conversión de imágenes
+**
+** Convierte imágenes a formato WEBP y normaliza nombres al subir a la biblioteca
+*/
 
-				$quality = 80; 
-				
-				$editor->set_quality($quality);
-				
+add_filter('wp_handle_upload', function ($upload) {
 
-				// Limpiamos el nombre del archivo
-				
-				$info = pathinfo($path);
-				
-				$dir = $info['dirname'];
-				
-				$filename = strtolower($info['filename']);
-				$filename = preg_replace('/[^a-z0-9]+/', '-', remove_accents($filename));
-				$filename = trim($filename, '-');
-				
+	// Solo procesar JPEG, PNG o GIF
+	if (!in_array($upload['type'], ['image/jpeg','image/png','image/gif'], true)) {
+		return $upload;
+	}
 
-				// Nos aseguramos que no existe otro archivo con el mismo nombre
-				
-				$filename = wp_unique_filename($dir, $filename.'.webp');
-				
-				$new = $dir.'/'.$filename;
-				
+	$path = $upload['file'];
 
-				// Guardamos en WEBP
+	// Requiere Imagick o GD
+	if (!extension_loaded('imagick') && !extension_loaded('gd')) {
+		return $upload;
+	}
 
-				$image = $editor->save($new, 'image/webp');
+	$editor = wp_get_image_editor($path);
+	if (is_wp_error($editor)) {
+		return $upload;
+	}
 
-				if (!is_wp_error($image) && file_exists($image['path'])) {
+	$editor->set_quality(80);
 
+	// Limpiar nombre
+	$info     = pathinfo($path);
+	$dir      = $info['dirname'];
+	$filename = strtolower(remove_accents($info['filename']));
+	$filename = trim(preg_replace('/[^a-z0-9]+/', '-', $filename), '-');
 
-					// Actualizamos los datos de la imagen
+	// Nombre único con extensión .webp
+	$filename = wp_unique_filename($dir, $filename . '.webp');
+	$new      = $dir . '/' . $filename;
 
-					$upload['file'] = $image['path'];
-					$upload['url'] = str_replace(basename($upload['url']), basename($image['path']), $upload['url']);
-					$upload['type'] = 'image/webp';
-
-					
-					// Eliminamos el archivo original
-
-					@unlink($path);
-
-				}
-
-			}
-
-		}
-
+	// Guardar en WEBP
+	$image = $editor->save($new, 'image/webp');
+	if (!is_wp_error($image) && is_file($image['path'])) {
+		$upload['file'] = $image['path'];
+		$upload['url']  = str_replace(basename($upload['url']), basename($image['path']), $upload['url']);
+		$upload['type'] = 'image/webp';
+		@unlink($path);
 	}
 
 	return $upload;
 
 });
-

@@ -1,158 +1,75 @@
 <?php
 
-defined('ABSPATH') or die();
+defined('ABSPATH') || exit;
 
 
-/* Elementor : Etiquetas dinámicas para categorías de tratamientos */
+/* Etiquetas dinámicas
+**
+** Añade etiquetas dinámicas a Elementor
+*/
 
-add_action('elementor/dynamic_tags/register_tags', function($dynamic_tags) {
+add_action('elementor/dynamic_tags/register_tags', function ($dynamic_tags) {
+	// Requisitos mínimos
+	if (!class_exists('\Elementor\Core\DynamicTags\Data_Tag')) return;
 
-	class Custom_Term_Image_Tag extends Elementor\Core\DynamicTags\Data_Tag {
+	abstract class Orenes_Term_Field_Base_Tag extends \Elementor\Core\DynamicTags\Data_Tag {
+		public function get_group() { return ['site']; }
 
-		public function get_name() {
-			return 'category-image';
+		protected function get_value(array $options = []) {
+			// ACF requerido
+			if (!function_exists('get_field')) return null;
+
+			$taxonomy = (string) $this->get_settings('taxonomy');
+			if ($taxonomy === '') return null;
+
+			$terms = wp_get_post_terms(get_the_ID(), $taxonomy);
+			if (empty($terms) || is_wp_error($terms)) return null;
+
+			$term_id = (int) $terms[0]->term_id;
+			if ($term_id <= 0) return null;
+
+			$field = (string) $this->get_settings('field');
+			if ($field === '') return null;
+
+			// ACF admite "taxonomy_term" en formato "{$tax}_{$term_id}"
+			return get_field($field, "{$taxonomy}_{$term_id}") ?: null;
 		}
-
-		public function get_categories() {
-			return ['image'];
-		}
-
-		public function get_group() {
-			return ['site'];
-		}
-
-		public function get_title() {
-			return __('Taxonomy image', 'orenes');
-		}
-
-		protected function get_value(array $options = array()) {
-
-			$terms = wp_get_post_terms(get_the_ID(), $this->get_settings('taxonomy'));
-
-			if (!is_array($terms)) {
-				return;
-			}
-
-			$term = $terms[0]->term_id;
-
-			if (!function_exists('get_field')) {
-				return;
-			}
-
-			$image = get_field($this->get_settings('field'), $this->get_settings('taxonomy').'_'.$term);
-
-			if (!$image) {
-				return;
-			}
-
-			return $image;
-		}
-
 
 		protected function _register_controls() {
-
-			$options = array();
-
-			foreach (get_taxonomies(array('public' => true), 'objects') as $taxonomy) {
-				$options[$taxonomy->name] = $taxonomy->label; 
+			// Taxonomías públicas
+			$options = [];
+			foreach (get_taxonomies(['public' => true], 'objects') as $tax) {
+				$options[$tax->name] = $tax->label;
 			}
-		
-			$this->add_control(
-				'taxonomy', array(
-					'label' => __('Taxonomy', 'elementor-pro'),
-					'type' => Elementor\Controls_Manager::SELECT,
-					'options' => $options
-				)
-			);
-		
-			$this->add_control(
-				'field', array(
-					'label' => __('Field', 'elementor-pro'),
-					'type' => Elementor\Controls_Manager::TEXT,
-				)
-			);
-		
+
+			$this->add_control('taxonomy', [
+				'label'   => __('Taxonomy', 'elementor-pro'),
+				'type'    => \Elementor\Controls_Manager::SELECT,
+				'options' => $options,
+			]);
+			$this->add_control('field', [
+				'label' => __('Field', 'elementor-pro'),
+				'type'  => \Elementor\Controls_Manager::TEXT,
+			]);
 		}
-
-
 	}
 
-	$dynamic_tags->register_tag('Custom_Term_Image_Tag');
-
-});
-
-add_action('elementor/dynamic_tags/register_tags', function($dynamic_tags) {
-
-	class Custom_Term_Text_Tag extends Elementor\Core\DynamicTags\Data_Tag {
-
-		public function get_name() {
-			return 'category-text';
+	if (!class_exists('Orenes_Term_Image_Tag')) {
+		class Orenes_Term_Image_Tag extends Orenes_Term_Field_Base_Tag {
+			public function get_name() { return 'category-image'; }
+			public function get_title() { return __('Taxonomy image', 'orenes'); }
+			public function get_categories() { return ['image']; }
 		}
-
-		public function get_categories() {
-			return ['text', 'heading'];
-		}
-
-		public function get_group() {
-			return ['site'];
-		}
-
-		public function get_title() {
-			return __('Taxonomy text', 'orenes');
-		}
-
-		protected function get_value(array $options = array()) {
-
-			$terms = wp_get_post_terms(get_the_ID(), $this->get_settings('taxonomy'));
-
-			if (!is_array($terms)) {
-				return;
-			}
-
-			$term = $terms[0]->term_id;
-
-			if (!function_exists('get_field')) {
-				return;
-			}
-
-			$image = get_field($this->get_settings('field'), $this->get_settings('taxonomy').'_'.$term);
-
-			if (!$image) {
-				return;
-			}
-
-			return $image;
-		}
-
-
-		protected function _register_controls() {
-
-			$options = array();
-
-			foreach (get_taxonomies(array('public' => true), 'objects') as $taxonomy) {
-				$options[$taxonomy->name] = $taxonomy->label; 
-			}
-		
-			$this->add_control(
-				'taxonomy', array(
-					'label' => __( 'Taxonomy', 'elementor-pro' ),
-					'type' => Elementor\Controls_Manager::SELECT,
-					'options' => $options
-				)
-			);
-		
-			$this->add_control(
-				'field', array(
-					'label' => __( 'Field', 'elementor-pro' ),
-					'type' => Elementor\Controls_Manager::TEXT,
-				)
-			);
-		
-		}
-
-
 	}
 
-	$dynamic_tags->register_tag('Custom_Term_Text_Tag');
+	if (!class_exists('Orenes_Term_Text_Tag')) {
+		class Orenes_Term_Text_Tag extends Orenes_Term_Field_Base_Tag {
+			public function get_name() { return 'category-text'; }
+			public function get_title() { return __('Taxonomy text', 'orenes'); }
+			public function get_categories() { return ['text','heading']; }
+		}
+	}
 
+	$dynamic_tags->register_tag(new \Orenes_Term_Image_Tag());
+	$dynamic_tags->register_tag(new \Orenes_Term_Text_Tag());
 });

@@ -1,50 +1,44 @@
 <?php
-
 namespace Orenes;
 
-if (! defined('ABSPATH')) {
-	exit;
-}
+defined('ABSPATH') || exit;
 
+use Elementor\Plugin as ElementorPlugin;
+use Elementor\Widgets_Manager;
 use Orenes\Widgets\Mapbox_Map;
 
-class Plugin {
+final class Plugin {
 
 	public function __construct() {
-		$this->add_actions();
+		// Registrar widgets con el hook moderno
+		add_action('elementor/widgets/register', [$this, 'register_widgets']);
+		// Añadir categoría propia
+		add_action('elementor/init', [$this, 'add_category']);
 	}
 
-	private function add_actions() {
-		add_action('elementor/widgets/widgets_registered', [$this, 'on_widgets_registered']);
-		add_action('elementor/init', [$this, 'elementor_init']);
+	/** Carga archivos y registra widgets */
+	public function register_widgets(Widgets_Manager $widgets_manager): void {
+		$this->include_widgets();
+		$widgets_manager->register(new Mapbox_Map());
 	}
 
-	public function on_widgets_registered() {
-		$this->includes();
-		$this->register_widget();
+	/** Incluye todos los widgets del directorio */
+	private function include_widgets(): void {
+		if (function_exists('\directory_include')) {
+			\directory_include(get_template_directory() . '/elementor/widgets');
+		}
 	}
 
-	private function includes() {
-		directory_include(get_template_directory().'/elementor/widgets');
+	/** Crea categoría "Orenes" en el panel de widgets */
+	public function add_category(): void {
+		$elements = ElementorPlugin::$instance->elements_manager ?? null;
+		if ($elements) {
+			$elements->add_category('orenes', [
+				'title' => __('Orenes', 'orenes'),
+				'icon'  => 'eicon-map', // icono genérico; cambia si quieres
+			]);
+		}
 	}
-
-	private function register_widget() {
-		\Elementor\Plugin::instance()->widgets_manager->register_widget_type(new Mapbox_Map());
-
-	}
-
-	public function elementor_init() {
-		$elementor = \Elementor\Plugin::$instance;
-		$elementor->elements_manager->add_category(
-			'orenes',
-			[
-				'title' => 'Orenes',
-				'icon' => 'font',
-			],
-			1
-		);
-	}
-
 }
 
 new Plugin();
