@@ -13,8 +13,8 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A parent selector reference, `&`.
@@ -23,11 +23,7 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
  */
 final class SelectorExpression implements Expression
 {
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(FileSpan $span)
     {

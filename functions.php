@@ -231,6 +231,8 @@ function cleanup_core(): void {
 		$theme_dir.'/LICENSE',
 		$theme_dir.'/README.md',
 		$theme_dir.'/readme.md',
+		$theme_dir.'/CHANGELOG.md',
+		$theme_dir.'/changelog.md'
 	];
 
 	foreach ($dirs as $dir) {

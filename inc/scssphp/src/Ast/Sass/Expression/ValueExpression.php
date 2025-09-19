@@ -13,9 +13,9 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Value\Value;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * An expression that directly embeds a value.
@@ -27,17 +27,9 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
  */
 final class ValueExpression implements Expression
 {
-    /**
-     * @var Value
-     * @readonly
-     */
-    private $value;
+    private readonly Value $value;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(Value $value, FileSpan $span)
     {

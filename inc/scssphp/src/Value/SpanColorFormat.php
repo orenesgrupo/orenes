@@ -12,17 +12,14 @@
 
 namespace ScssPhp\ScssPhp\Value;
 
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * @internal
  */
-final class SpanColorFormat
+final class SpanColorFormat implements ColorFormat
 {
-    /**
-     * @var FileSpan
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(FileSpan $span)
     {

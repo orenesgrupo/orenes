@@ -15,9 +15,9 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
 use ScssPhp\ScssPhp\Parser\InterpolationBuffer;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Util\Character;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A string literal.
@@ -26,17 +26,9 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
  */
 final class StringExpression implements Expression
 {
-    /**
-     * @var Interpolation
-     * @readonly
-     */
-    private $text;
+    private readonly Interpolation $text;
 
-    /**
-     * @var bool
-     * @readonly
-     */
-    private $quotes;
+    private readonly bool $quotes;
 
     public function __construct(Interpolation $text, bool $quotes = false)
     {
@@ -66,6 +58,15 @@ final class StringExpression implements Expression
         return $buffer;
     }
 
+    /**
+     * Interpolation that, when evaluated, produces the contents of this string.
+     *
+     * Unlike {@see asInterpolation}, escapes are resolved and quotes are not
+     * included.
+     * If this is a quoted string, escapes are resolved and quotes are not
+     * included in this text (unlike {@see asInterpolation}). If it's an unquoted
+     * string, escapes are *not* resolved.
+     */
     public function getText(): Interpolation
     {
         return $this->text;
@@ -86,7 +87,7 @@ final class StringExpression implements Expression
         return $visitor->visitStringExpression($this);
     }
 
-    public function asInterpolation(bool $static = false, string $quote = null): Interpolation
+    public function asInterpolation(bool $static = false, ?string $quote = null): Interpolation
     {
         if (!$this->quotes) {
             return $this->text;
@@ -151,8 +152,6 @@ final class StringExpression implements Expression
 
     /**
      * @param array<string|Expression> $parts
-     *
-     * @return string
      */
     private static function bestQuote(array $parts): string
     {
@@ -163,16 +162,16 @@ final class StringExpression implements Expression
                 continue;
             }
 
-            if (false !== strpos($part, "'")) {
+            if (str_contains($part, "'")) {
                 return '"';
             }
 
-            if (false !== strpos($part, '"')) {
+            if (str_contains($part, '"')) {
                 $containsDoubleQuote = true;
             }
         }
 
-        return $containsDoubleQuote ? "'": '"';
+        return $containsDoubleQuote ? "'" : '"';
     }
 
     public function __toString(): string

@@ -13,9 +13,9 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Value\SassNumber;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A number literal.
@@ -24,23 +24,11 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
  */
 final class NumberExpression implements Expression
 {
-    /**
-     * @var float
-     * @readonly
-     */
-    private $value;
+    private readonly float $value;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
-    /**
-     * @var string|null
-     * @readonly
-     */
-    private $unit;
+    private readonly ?string $unit;
 
     public function __construct(float $value, FileSpan $span, ?string $unit = null)
     {

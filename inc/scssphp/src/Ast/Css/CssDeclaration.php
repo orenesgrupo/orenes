@@ -12,8 +12,9 @@
 
 namespace ScssPhp\ScssPhp\Ast\Css;
 
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use ScssPhp\ScssPhp\StackTrace\Trace;
 use ScssPhp\ScssPhp\Value\Value;
+use SourceSpan\FileSpan;
 
 /**
  * A plain CSS declaration (that is, a `name: value` pair).
@@ -35,6 +36,27 @@ interface CssDeclaration extends CssNode
      * @return CssValue<Value>
      */
     public function getValue(): CssValue;
+
+    /**
+     * A list of style rules that appeared before this declaration in the Sass
+     * input but after it in the CSS output.
+     *
+     * These are used to emit mixed declaration deprecation warnings during
+     * serialization, so we can check based on specificity whether the warnings
+     * are really necessary without worrying about `@extend` potentially changing
+     * things up.
+     *
+     * @return list<CssStyleRule>
+     */
+    public function getInterleavedRules(): array;
+
+    /**
+     * The stack trace indicating where this node was created.
+     *
+     * This is used to emit interleaved declaration warnings, and only needs to be set if
+     * {@see getInterleavedRules} isn't empty.
+     */
+    public function getTrace(): ?Trace;
 
     /**
      * The span for {@see getValue} that should be emitted to the source map.

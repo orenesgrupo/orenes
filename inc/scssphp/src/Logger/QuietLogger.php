@@ -12,19 +12,21 @@
 
 namespace ScssPhp\ScssPhp\Logger;
 
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use ScssPhp\ScssPhp\Deprecation;
 use ScssPhp\ScssPhp\StackTrace\Trace;
+use SourceSpan\FileSpan;
+use SourceSpan\SourceSpan;
 
 /**
  * A logger that silently ignores all messages.
  */
-final class QuietLogger implements LocationAwareLoggerInterface
+final class QuietLogger implements LoggerInterface
 {
-    public function warn(string $message, bool $deprecation = false, ?FileSpan $span = null, ?Trace $trace = null): void
+    public function warn(string $message, ?Deprecation $deprecation = null, ?FileSpan $span = null, ?Trace $trace = null): void
     {
     }
 
-    public function debug(string $message, FileSpan $span = null): void
+    public function debug(string $message, SourceSpan $span): void
     {
     }
 }

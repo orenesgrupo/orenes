@@ -13,8 +13,8 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * An expression wrapped in parentheses.
@@ -23,17 +23,9 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
  */
 final class ParenthesizedExpression implements Expression
 {
-    /**
-     * @var Expression
-     * @readonly
-     */
-    private $expression;
+    private readonly Expression $expression;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(Expression $expression, FileSpan $span)
     {

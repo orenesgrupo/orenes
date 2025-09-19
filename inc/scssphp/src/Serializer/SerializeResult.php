@@ -12,6 +12,8 @@
 
 namespace ScssPhp\ScssPhp\Serializer;
 
+use ScssPhp\ScssPhp\SourceMap\SingleMapping;
+
 /**
  * The result of converting a CSS AST to CSS text.
  *
@@ -19,19 +21,9 @@ namespace ScssPhp\ScssPhp\Serializer;
  */
 final class SerializeResult
 {
-    /**
-     * @var string
-     * @readonly
-     */
-    private $css;
-
-    public function __construct(string $css)
-    {
-        $this->css = $css;
-    }
-
-    public function getCss(): string
-    {
-        return $this->css;
+    public function __construct(
+        public readonly string $css,
+        public readonly ?SingleMapping $mapping,
+    ) {
     }
 }

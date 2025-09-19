@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
 use ScssPhp\ScssPhp\Ast\Sass\SupportsCondition;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A `@supports` rule.
@@ -26,17 +26,9 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class SupportsRule extends ParentStatement
 {
-    /**
-     * @var SupportsCondition
-     * @readonly
-     */
-    private $condition;
+    private readonly SupportsCondition $condition;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     /**
      * @param Statement[] $children

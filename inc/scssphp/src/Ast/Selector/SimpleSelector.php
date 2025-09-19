@@ -12,8 +12,10 @@
 
 namespace ScssPhp\ScssPhp\Ast\Selector;
 
+use League\Uri\Contracts\UriInterface;
+use ScssPhp\ScssPhp\Exception\MultiSpanSassException;
+use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\Exception\SassFormatException;
-use ScssPhp\ScssPhp\Exception\SassScriptException;
 use ScssPhp\ScssPhp\Logger\LoggerInterface;
 use ScssPhp\ScssPhp\Parser\SelectorParser;
 use ScssPhp\ScssPhp\Util\EquatableUtil;
@@ -21,6 +23,8 @@ use ScssPhp\ScssPhp\Util\ListUtil;
 
 /**
  * An abstract superclass for simple selectors.
+ *
+ * @internal
  */
 abstract class SimpleSelector extends Selector
 {
@@ -48,7 +52,7 @@ abstract class SimpleSelector extends Selector
      *
      * @throws SassFormatException if parsing fails.
      */
-    public static function parse(string $contents, ?LoggerInterface $logger = null, ?string $url = null, bool $allowParent = true): SimpleSelector
+    public static function parse(string $contents, ?LoggerInterface $logger = null, ?UriInterface $url = null, bool $allowParent = true): SimpleSelector
     {
         return (new SelectorParser($contents, $logger, $url, $allowParent))->parseSimpleSelector();
     }
@@ -66,17 +70,31 @@ abstract class SimpleSelector extends Selector
     }
 
     /**
+     * Whether this requires complex non-local reasoning to determine whether
+     * it's a super- or sub-selector.
+     *
+     * This includes both pseudo-elements and pseudo-selectors that take
+     * selectors as arguments.
+     *
+     * @internal
+     */
+    public function hasComplicatedSuperselectorSemantics(): bool
+    {
+        return false;
+    }
+
+    /**
      * Returns a new {@see SimpleSelector} based on $this, as though it had been
      * written with $suffix at the end.
      *
      * Assumes $suffix is a valid identifier suffix. If this wouldn't produce a
-     * valid SimpleSelector, throws a {@see SassScriptException}.
+     * valid SimpleSelector, throws an exception.
      *
-     * @throws SassScriptException
+     * @throws SassException
      */
     public function addSuffix(string $suffix): SimpleSelector
     {
-        throw new SassScriptException("Invalid parent selector \"$this\"");
+        throw new MultiSpanSassException("Invalid parent selector \"$this\"", $this->getSpan(), 'outer selector', []);
     }
 
     /**
@@ -104,7 +122,7 @@ abstract class SimpleSelector extends Selector
             }
         }
 
-        if (EquatableUtil::listContains($compound, $this)) {
+        if (EquatableUtil::iterableContains($compound, $this)) {
             return $compound;
         }
 

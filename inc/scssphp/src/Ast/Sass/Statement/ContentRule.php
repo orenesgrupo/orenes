@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\ArgumentInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A `@content` rule.
@@ -31,17 +31,10 @@ final class ContentRule implements Statement
      * The arguments pass to this `@content` rule.
      *
      * This will be an empty invocation if `@content` has no arguments.
-     *
-     * @var ArgumentInvocation
-     * @readonly
      */
-    private $arguments;
+    private readonly ArgumentInvocation $arguments;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(ArgumentInvocation $arguments, FileSpan $span)
     {

@@ -23,6 +23,11 @@ use ScssPhp\ScssPhp\Visitor\CssVisitor;
 interface CssNode extends AstNode
 {
     /**
+     * The node that contains this, or `null` for the root {@see CssStylesheet} node.
+     */
+    public function getParent(): ?CssParentNode;
+
+    /**
      * Whether this was generated from the last node in a nested Sass tree that
      * got flattened during evaluation.
      */
@@ -37,7 +42,7 @@ interface CssNode extends AstNode
      *
      * @return T
      */
-    public function accept($visitor);
+    public function accept(CssVisitor $visitor);
 
     /**
      * Whether this is invisible and won't be emitted to the compiled stylesheet.

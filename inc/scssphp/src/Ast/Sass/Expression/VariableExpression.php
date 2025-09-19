@@ -14,9 +14,9 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\SassReference;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Util\SpanUtil;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A Sass variable.
@@ -27,26 +27,16 @@ final class VariableExpression implements Expression, SassReference
 {
     /**
      * The name of this variable, with underscores converted to hyphens.
-     *
-     * @var string
-     * @readonly
      */
-    private $name;
+    private readonly string $name;
 
     /**
      * The namespace of the variable being referenced, or `null` if it's
      * referenced without a namespace.
-     *
-     * @var string|null
-     * @readonly
      */
-    private $namespace;
+    private ?string $namespace;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(string $name, FileSpan $span, ?string $namespace = null)
     {
@@ -95,10 +85,6 @@ final class VariableExpression implements Expression, SassReference
 
     public function __toString(): string
     {
-        if ($this->namespace === null) {
-            return '$' . $this->name;
-        }
-
-        return $this->namespace . '$' . $this->name;
+        return $this->span->getText();
     }
 }

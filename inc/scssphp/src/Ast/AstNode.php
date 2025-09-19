@@ -12,16 +12,14 @@
 
 namespace ScssPhp\ScssPhp\Ast;
 
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * A node in an abstract syntax tree.
  *
  * @internal
  */
-interface AstNode
+interface AstNode extends \Stringable
 {
     public function getSpan(): FileSpan;
-
-    public function __toString(): string;
 }

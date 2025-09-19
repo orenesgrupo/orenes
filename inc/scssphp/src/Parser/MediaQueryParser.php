@@ -29,7 +29,7 @@ final class MediaQueryParser extends Parser
      */
     public function parse(): array
     {
-        try {
+        return $this->wrapSpanFormatException(function () {
             $queries = [];
 
             do {
@@ -40,9 +40,7 @@ final class MediaQueryParser extends Parser
             $this->scanner->expectDone();
 
             return $queries;
-        } catch (FormatException $e) {
-            throw $this->wrapException($e);
-        }
+        });
     }
 
     /**
@@ -112,6 +110,7 @@ final class MediaQueryParser extends Parser
         // `IDENTIFIER IDENTIFIER "and"`.
 
         if ($this->scanIdentifier('not')) {
+            $this->expectWhitespace();
             // For example, "@media screen and not (...) {"
             return CssMediaQuery::type($type, $modifier, ['(not ' . $this->mediaInParens() . ')']);
         }

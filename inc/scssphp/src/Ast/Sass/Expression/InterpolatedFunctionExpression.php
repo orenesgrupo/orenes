@@ -16,8 +16,8 @@ use ScssPhp\ScssPhp\Ast\Sass\ArgumentInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\CallableInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * An interpolated function invocation.
@@ -30,25 +30,15 @@ final class InterpolatedFunctionExpression implements Expression, CallableInvoca
 {
     /**
      * The name of the function being invoked.
-     *
-     * @var Interpolation
-     * @readonly
      */
-    private $name;
+    private readonly Interpolation $name;
 
     /**
      * The arguments to pass to the function.
-     *
-     * @var ArgumentInvocation
-     * @readonly
      */
-    private $arguments;
+    private readonly ArgumentInvocation $arguments;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(Interpolation $name, ArgumentInvocation $arguments, FileSpan $span)
     {

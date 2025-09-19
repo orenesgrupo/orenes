@@ -13,8 +13,8 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A map literal.
@@ -25,15 +25,10 @@ final class MapExpression implements Expression
 {
     /**
      * @var list<array{Expression, Expression}>
-     * @readonly
      */
-    private $pairs;
+    private readonly array $pairs;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     /**
      * @param list<array{Expression, Expression}> $pairs
@@ -64,8 +59,6 @@ final class MapExpression implements Expression
 
     public function __toString(): string
     {
-        return '(' . implode(', ', array_map(function ($pair) {
-            return $pair[0] . ': ' . $pair[1];
-        }, $this->pairs)) . ')';
+        return '(' . implode(', ', array_map(fn($pair) => $pair[0] . ': ' . $pair[1], $this->pairs)) . ')';
     }
 }

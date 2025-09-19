@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A `@while` rule.
@@ -29,17 +29,9 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class WhileRule extends ParentStatement
 {
-    /**
-     * @var Expression
-     * @readonly
-     */
-    private $condition;
+    private readonly Expression $condition;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     /**
      * @param Statement[] $children

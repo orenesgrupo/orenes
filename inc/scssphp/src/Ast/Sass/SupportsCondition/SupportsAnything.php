@@ -14,7 +14,7 @@ namespace ScssPhp\ScssPhp\Ast\Sass\SupportsCondition;
 
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
 use ScssPhp\ScssPhp\Ast\Sass\SupportsCondition;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * A supports condition that represents the forwards-compatible
@@ -26,17 +26,10 @@ final class SupportsAnything implements SupportsCondition
 {
     /**
      * The contents of the condition.
-     *
-     * @var Interpolation
-     * @readonly
      */
-    private $contents;
+    private readonly Interpolation $contents;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(Interpolation $contents, FileSpan $span)
     {

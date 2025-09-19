@@ -13,7 +13,7 @@
 namespace ScssPhp\ScssPhp\Ast\Sass;
 
 use ScssPhp\ScssPhp\Parser\InterpolationBuffer;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * Plain text interpolated with Sass expressions.
@@ -24,15 +24,10 @@ final class Interpolation implements SassNode
 {
     /**
      * @var list<string|Expression>
-     * @readonly
      */
-    private $contents;
+    private readonly array $contents;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     /**
      * Creates a new {@see Interpolation} by concatenating a sequence of strings,
@@ -52,7 +47,7 @@ final class Interpolation implements SassNode
             } elseif ($element instanceof Interpolation) {
                 $buffer->addInterpolation($element);
             } else {
-                throw new \InvalidArgumentException(sprintf('The elements in $contents may only contains strings, Expressions, or Interpolations, "%s" given.', \is_object($element) ? get_class($element) : gettype($element)));
+                throw new \InvalidArgumentException(sprintf('The elements in $contents may only contains strings, Expressions, or Interpolations, "%s" given.', get_debug_type($element)));
             }
         }
 
@@ -65,9 +60,7 @@ final class Interpolation implements SassNode
     public function __construct(array $contents, FileSpan $span)
     {
         for ($i = 0; $i < \count($contents); $i++) {
-            if (!\is_string($contents[$i]) && !$contents[$i] instanceof Expression) {
-                throw new \TypeError('The contents of an Interpolation may only contain strings or Expression instances.');
-            }
+            // Dart-sass has a validation on the type of elements here. This is useless for us because phpstan supports union types, unlike the Dart type system
 
             if ($i != 0 && \is_string($contents[$i]) && \is_string($contents[$i - 1])) {
                 throw new \InvalidArgumentException('The contents of an Interpolation may not contain adjacent strings.');
@@ -89,6 +82,14 @@ final class Interpolation implements SassNode
     public function getSpan(): FileSpan
     {
         return $this->span;
+    }
+
+    /**
+     * Returns whether this contains no interpolated expressions.
+     */
+    public function isPlain(): bool
+    {
+        return $this->getAsPlain() !== null;
     }
 
     /**
@@ -131,8 +132,6 @@ final class Interpolation implements SassNode
 
     public function __toString(): string
     {
-        return implode('', array_map(function ($value) {
-            return \is_string($value) ? $value : '#{' . $value .'}';
-        }, $this->contents));
+        return implode('', array_map(fn($value) => \is_string($value) ? $value : '#{' . $value . '}', $this->contents));
     }
 }

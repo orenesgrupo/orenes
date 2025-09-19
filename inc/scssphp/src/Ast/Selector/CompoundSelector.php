@@ -12,18 +12,23 @@
 
 namespace ScssPhp\ScssPhp\Ast\Selector;
 
+use League\Uri\Contracts\UriInterface;
 use ScssPhp\ScssPhp\Exception\SassFormatException;
 use ScssPhp\ScssPhp\Extend\ExtendUtil;
 use ScssPhp\ScssPhp\Logger\LoggerInterface;
 use ScssPhp\ScssPhp\Parser\SelectorParser;
 use ScssPhp\ScssPhp\Util\EquatableUtil;
+use ScssPhp\ScssPhp\Util\IterableUtil;
 use ScssPhp\ScssPhp\Visitor\SelectorVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A compound selector.
  *
  * A compound selector is composed of {@see SimpleSelector}s. It matches an element
  * that matches all of the component simple selectors.
+ *
+ * @internal
  */
 final class CompoundSelector extends Selector
 {
@@ -34,12 +39,11 @@ final class CompoundSelector extends Selector
      *
      * @var list<SimpleSelector>
      */
-    private $components;
+    private readonly array $components;
 
-    /**
-     * @var int|null
-     */
-    private $specificity;
+    private ?int $specificity = null;
+
+    private ?bool $complicatedSuperselectorSemantics = null;
 
     /**
      * Parses a compound selector from $contents.
@@ -50,7 +54,7 @@ final class CompoundSelector extends Selector
      *
      * @throws SassFormatException if parsing fails.
      */
-    public static function parse(string $contents, ?LoggerInterface $logger = null, ?string $url = null, bool $allowParent = true): CompoundSelector
+    public static function parse(string $contents, ?LoggerInterface $logger = null, ?UriInterface $url = null, bool $allowParent = true): CompoundSelector
     {
         return (new SelectorParser($contents, $logger, $url, $allowParent))->parseCompoundSelector();
     }
@@ -58,13 +62,14 @@ final class CompoundSelector extends Selector
     /**
      * @param list<SimpleSelector> $components
      */
-    public function __construct(array $components)
+    public function __construct(array $components, FileSpan $span)
     {
         if ($components === []) {
             throw new \InvalidArgumentException('components may not be empty.');
         }
 
         $this->components = $components;
+        parent::__construct($span);
     }
 
     /**
@@ -111,6 +116,21 @@ final class CompoundSelector extends Selector
     public function getSingleSimple(): ?SimpleSelector
     {
         return \count($this->components) === 1 ? $this->components[0] : null;
+    }
+
+    /**
+     * Whether any simple selector in this contains a selector that requires
+     * complex non-local reasoning to determine whether it's a super- or
+     * sub-selector.
+     *
+     * This includes both pseudo-elements and pseudo-selectors that take
+     * selectors as arguments.
+     *
+     * @internal
+     */
+    public function hasComplicatedSuperselectorSemantics(): bool
+    {
+        return $this->complicatedSuperselectorSemantics ??= IterableUtil::any($this->components, fn (SimpleSelector $component) => $component->hasComplicatedSuperselectorSemantics());
     }
 
     public function accept(SelectorVisitor $visitor)

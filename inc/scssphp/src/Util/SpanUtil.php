@@ -13,13 +13,19 @@
 namespace ScssPhp\ScssPhp\Util;
 
 use ScssPhp\ScssPhp\Parser\StringScanner;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
+use SourceSpan\SourceFile;
 
 /**
  * @internal
  */
 final class SpanUtil
 {
+    public static function bogusSpan(): FileSpan
+    {
+        return SourceFile::fromString('')->span(0);
+    }
+
     /**
      * Returns this span with all whitespace trimmed from both sides.
      */

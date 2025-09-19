@@ -13,26 +13,27 @@
 namespace ScssPhp\ScssPhp\Ast\Selector;
 
 use ScssPhp\ScssPhp\Visitor\SelectorVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A class selector.
  *
  * This selects elements whose `class` attribute contains an identifier with
  * the given name.
+ *
+ * @internal
  */
 final class ClassSelector extends SimpleSelector
 {
     /**
      * The class name this selects for.
-     *
-     * @var string
-     * @readonly
      */
-    private $name;
+    private readonly string $name;
 
-    public function __construct(string $name)
+    public function __construct(string $name, FileSpan $span)
     {
         $this->name = $name;
+        parent::__construct($span);
     }
 
     public function getName(): string
@@ -52,6 +53,6 @@ final class ClassSelector extends SimpleSelector
 
     public function addSuffix(string $suffix): SimpleSelector
     {
-        return new ClassSelector($this->name . $suffix);
+        return new ClassSelector($this->name . $suffix, $this->getSpan());
     }
 }

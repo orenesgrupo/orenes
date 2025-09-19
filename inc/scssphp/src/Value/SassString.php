@@ -13,7 +13,6 @@
 namespace ScssPhp\ScssPhp\Value;
 
 use ScssPhp\ScssPhp\Exception\SassScriptException;
-use ScssPhp\ScssPhp\Util;
 use ScssPhp\ScssPhp\Visitor\ValueVisitor;
 
 /**
@@ -37,19 +36,13 @@ final class SassString extends Value
      * contain characters that aren't valid in identifiers, such as
      * `url(http://example.com)`. Unfortunately, it also means that we don't
      * consider `foo` and `f\6F\6F` the same string.
-     *
-     * @var string
-     * @readonly
      */
-    private $text;
+    private readonly string $text;
 
     /**
      * Whether this string has quotes.
-     *
-     * @var bool
-     * @readonly
      */
-    private $quotes;
+    private readonly bool $quotes;
 
     public function __construct(string $text, bool $quotes = true)
     {
@@ -69,7 +62,7 @@ final class SassString extends Value
 
     public function getSassLength(): int
     {
-        return Util::mbStrlen($this->text);
+        return mb_strlen($this->text, 'UTF-8');
     }
 
     public function isSpecialNumber(): bool
@@ -181,7 +174,7 @@ final class SassString extends Value
             return 0;
         }
 
-        return \strlen(Util::mbSubstr($this->text, 0, $codepointIndex));
+        return \strlen(mb_substr($this->text, 0, $codepointIndex, 'UTF-8'));
     }
 
     /**

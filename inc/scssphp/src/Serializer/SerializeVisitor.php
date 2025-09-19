@@ -13,14 +13,22 @@
 namespace ScssPhp\ScssPhp\Serializer;
 
 use ScssPhp\ScssPhp\Ast\AstNode;
+use ScssPhp\ScssPhp\Ast\Css\CssAtRule;
 use ScssPhp\ScssPhp\Ast\Css\CssComment;
 use ScssPhp\ScssPhp\Ast\Css\CssDeclaration;
+use ScssPhp\ScssPhp\Ast\Css\CssImport;
+use ScssPhp\ScssPhp\Ast\Css\CssKeyframeBlock;
 use ScssPhp\ScssPhp\Ast\Css\CssMediaQuery;
+use ScssPhp\ScssPhp\Ast\Css\CssMediaRule;
 use ScssPhp\ScssPhp\Ast\Css\CssNode;
 use ScssPhp\ScssPhp\Ast\Css\CssParentNode;
+use ScssPhp\ScssPhp\Ast\Css\CssStyleRule;
+use ScssPhp\ScssPhp\Ast\Css\CssStylesheet;
+use ScssPhp\ScssPhp\Ast\Css\CssSupportsRule;
 use ScssPhp\ScssPhp\Ast\Css\CssValue;
 use ScssPhp\ScssPhp\Ast\Selector\AttributeSelector;
 use ScssPhp\ScssPhp\Ast\Selector\ClassSelector;
+use ScssPhp\ScssPhp\Ast\Selector\Combinator;
 use ScssPhp\ScssPhp\Ast\Selector\ComplexSelector;
 use ScssPhp\ScssPhp\Ast\Selector\CompoundSelector;
 use ScssPhp\ScssPhp\Ast\Selector\IDSelector;
@@ -31,21 +39,24 @@ use ScssPhp\ScssPhp\Ast\Selector\SelectorList;
 use ScssPhp\ScssPhp\Ast\Selector\TypeSelector;
 use ScssPhp\ScssPhp\Ast\Selector\UniversalSelector;
 use ScssPhp\ScssPhp\Colors;
-use ScssPhp\ScssPhp\Exception\SassRuntimeException;
+use ScssPhp\ScssPhp\Deprecation;
 use ScssPhp\ScssPhp\Exception\SassScriptException;
+use ScssPhp\ScssPhp\Logger\LoggerInterface;
+use ScssPhp\ScssPhp\Logger\QuietLogger;
 use ScssPhp\ScssPhp\OutputStyle;
 use ScssPhp\ScssPhp\Parser\LineScanner;
 use ScssPhp\ScssPhp\Parser\Parser;
 use ScssPhp\ScssPhp\Parser\StringScanner;
-use ScssPhp\ScssPhp\Util;
+use ScssPhp\ScssPhp\SourceSpan\MultiSpan;
 use ScssPhp\ScssPhp\Util\Character;
+use ScssPhp\ScssPhp\Util\IterableUtil;
+use ScssPhp\ScssPhp\Util\LoggerUtil;
 use ScssPhp\ScssPhp\Util\NumberUtil;
 use ScssPhp\ScssPhp\Util\SpanUtil;
 use ScssPhp\ScssPhp\Util\StringUtil;
-use ScssPhp\ScssPhp\Value\CalculationInterpolation;
 use ScssPhp\ScssPhp\Value\CalculationOperation;
 use ScssPhp\ScssPhp\Value\CalculationOperator;
-use ScssPhp\ScssPhp\Value\ColorFormat;
+use ScssPhp\ScssPhp\Value\ColorFormatEnum;
 use ScssPhp\ScssPhp\Value\ListSeparator;
 use ScssPhp\ScssPhp\Value\SassBoolean;
 use ScssPhp\ScssPhp\Value\SassCalculation;
@@ -53,8 +64,10 @@ use ScssPhp\ScssPhp\Value\SassColor;
 use ScssPhp\ScssPhp\Value\SassFunction;
 use ScssPhp\ScssPhp\Value\SassList;
 use ScssPhp\ScssPhp\Value\SassMap;
+use ScssPhp\ScssPhp\Value\SassMixin;
 use ScssPhp\ScssPhp\Value\SassNumber;
 use ScssPhp\ScssPhp\Value\SassString;
+use ScssPhp\ScssPhp\Value\SpanColorFormat;
 use ScssPhp\ScssPhp\Value\Value;
 use ScssPhp\ScssPhp\Visitor\CssVisitor;
 use ScssPhp\ScssPhp\Visitor\SelectorVisitor;
@@ -69,58 +82,45 @@ use ScssPhp\ScssPhp\Visitor\ValueVisitor;
  */
 final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisitor
 {
-    /**
-     * @var StringBuffer
-     */
-    private $buffer;
+    private readonly SourceMapBuffer $buffer;
 
     /**
      * The current indentation of the CSS output.
      *
      * @var int
      */
-    private $indentation = 0;
+    private int $indentation = 0;
 
     /**
      * Whether we're emitting an unambiguous representation of the source
      * structure, as opposed to valid CSS.
-     *
-     * @var bool
      */
-    private $inspect;
+    private readonly bool $inspect;
 
     /**
      * Whether quoted strings should be emitted with quotes.
-     *
-     * @var bool
      */
-    private $quote;
+    private readonly bool $quote;
 
-    /**
-     * @var bool
-     */
-    private $compressed;
+    private readonly LoggerInterface $logger;
 
-    /**
-     * @phpstan-param OutputStyle::* $style
-     */
-    public function __construct(bool $inspect = false, bool $quote = true, string $style = OutputStyle::EXPANDED)
+    private readonly bool $compressed;
+
+    public function __construct(bool $inspect = false, bool $quote = true, OutputStyle $style = OutputStyle::EXPANDED, bool $sourceMap = false, ?LoggerInterface $logger = null)
     {
-        $this->buffer = new SimpleStringBuffer();
+        $this->buffer = $sourceMap ? new TrackingSourceMapBuffer() : new SimpleStringBuffer();
         $this->inspect = $inspect;
         $this->quote = $quote;
+        $this->logger = $logger ?? new QuietLogger();
         $this->compressed = $style === OutputStyle::COMPRESSED;
     }
 
-    /**
-     * @return StringBuffer
-     */
-    public function getBuffer(): StringBuffer
+    public function getBuffer(): SourceMapBuffer
     {
         return $this->buffer;
     }
 
-    public function visitCssStylesheet($node): void
+    public function visitCssStylesheet(CssStylesheet $node): void
     {
         $previous = null;
 
@@ -154,11 +154,16 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    public function visitCssComment($node): void
+    public function visitCssComment(CssComment $node): void
     {
         $this->for($node, function () use ($node) {
             // Preserve comments that start with `/*!`.
             if ($this->compressed && !$node->isPreserved()) {
+                return;
+            }
+
+            // Ignore sourceMappingURL and sourceURL comments.
+            if (preg_match('{^/\*# source(Mapping)?URL=}', $node->getText())) {
                 return;
             }
 
@@ -177,7 +182,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         });
     }
 
-    public function visitCssAtRule($node): void
+    public function visitCssAtRule(CssAtRule $node): void
     {
         $this->writeIndentation();
 
@@ -199,7 +204,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         });
     }
 
-    public function visitCssMediaRule($node): void
+    public function visitCssMediaRule(CssMediaRule $node): void
     {
         $this->writeIndentation();
 
@@ -208,18 +213,18 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
             $firstQuery = $node->getQueries()[0];
 
-            if (!$this->compressed || $firstQuery->getModifier() !== null || $firstQuery->getType() !== null || (\count($firstQuery->getConditions()) === 1) && StringUtil::startsWith($firstQuery->getConditions()[0], '(not ')) {
+            if (!$this->compressed || $firstQuery->getModifier() !== null || $firstQuery->getType() !== null || (\count($firstQuery->getConditions()) === 1) && str_starts_with($firstQuery->getConditions()[0], '(not ')) {
                 $this->buffer->writeChar(' ');
             }
 
-            $this->writeBetween($node->getQueries(), $this->getCommaSeparator(), [$this, 'visitMediaQuery']);
+            $this->writeBetween($node->getQueries(), $this->getCommaSeparator(), $this->visitMediaQuery(...));
         });
 
         $this->writeOptionalSpace();
         $this->visitChildren($node);
     }
 
-    public function visitCssImport($node): void
+    public function visitCssImport(CssImport $node): void
     {
         $this->writeIndentation();
 
@@ -260,12 +265,12 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    public function visitCssKeyframeBlock($node): void
+    public function visitCssKeyframeBlock(CssKeyframeBlock $node): void
     {
         $this->writeIndentation();
 
         $this->for($node->getSelector(), function () use ($node) {
-            $this->writeBetween($node->getSelector()->getValue(), $this->getCommaSeparator(), [$this->buffer, 'write']);
+            $this->writeBetween($node->getSelector()->getValue(), $this->getCommaSeparator(), $this->buffer->write(...));
         });
         $this->writeOptionalSpace();
         $this->visitChildren($node);
@@ -286,29 +291,29 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             }
         }
 
-        if (\count($query->getConditions()) === 1 && StringUtil::startsWith($query->getConditions()[0], '(not ')) {
+        if (\count($query->getConditions()) === 1 && str_starts_with($query->getConditions()[0], '(not ')) {
             $this->buffer->write('not ');
             $condition = $query->getConditions()[0];
             $this->buffer->write(substr($condition, \strlen('(not '), \strlen($condition) - (\strlen('(not ') + 1)));
         } else {
             $operator = $query->isConjunction() ? 'and' : 'or';
 
-            $this->writeBetween($query->getConditions(), $this->compressed ? "$operator " : " $operator ", [$this->buffer, 'write']);
+            $this->writeBetween($query->getConditions(), $this->compressed ? "$operator " : " $operator ", $this->buffer->write(...));
         }
     }
 
-    public function visitCssStyleRule($node): void
+    public function visitCssStyleRule(CssStyleRule $node): void
     {
         $this->writeIndentation();
 
         $this->for($node->getSelector(), function () use ($node) {
-            $node->getSelector()->getValue()->accept($this);
+            $node->getSelector()->accept($this);
         });
         $this->writeOptionalSpace();
         $this->visitChildren($node);
     }
 
-    public function visitCssSupportsRule($node): void
+    public function visitCssSupportsRule(CssSupportsRule $node): void
     {
         $this->writeIndentation();
 
@@ -325,8 +330,41 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         $this->visitChildren($node);
     }
 
-    public function visitCssDeclaration($node): void
+    public function visitCssDeclaration(CssDeclaration $node): void
     {
+        if ($node->getInterleavedRules() !== []) {
+            \assert($node->getParent() !== null);
+            $declSpecificities = $this->specificities($node->getParent());
+
+            foreach ($node->getInterleavedRules() as $rule) {
+                $ruleSpecificities = $this->specificities($rule);
+
+                // If the declaration can never match with the same specificity as one
+                // of its sibling rules, then ordering will never matter and there's no
+                // need to warn about the declaration being re-ordered.
+                if (!IterableUtil::any($declSpecificities, fn ($s) => \in_array($s, $ruleSpecificities, true))) {
+                    continue;
+                }
+
+                LoggerUtil::warnForDeprecation(
+                    $this->logger,
+                    Deprecation::mixedDecls,
+                    <<<'MESSAGE'
+                    Sass's behavior for declarations that appear after nested
+                    rules will be changing to match the behavior specified by CSS in an upcoming
+                    version. To keep the existing behavior, move the declaration above the nested
+                    rule. To opt into the new behavior, wrap the declaration in `& {}`.
+
+                    More info: https://sass-lang.com/d/mixed-decls
+                    MESSAGE,
+                    new MultiSpan($node->getSpan(), 'declaration', [
+                        'nested rule' => $rule->getSpan(),
+                    ]),
+                    $node->getTrace()
+                );
+            }
+        }
+
         $this->writeIndentation();
         $this->write($node->getName());
         $this->buffer->writeChar(':');
@@ -346,12 +384,38 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             $this->writeOptionalSpace();
 
             try {
-                // TODO implement source map tracking
-                $node->getValue()->getValue()->accept($this);
+                $this->buffer->forSpan($node->getValueSpanForMap(), fn () => $node->getValue()->getValue()->accept($this));
             } catch (SassScriptException $error) {
-                throw new SassRuntimeException($error->getMessage(), $node->getValue()->getSpan(), $error);
+                throw $error->withSpan($node->getValue()->getSpan());
             }
         }
+    }
+
+    /**
+     * Returns the set of possible specificities with which $node might match.
+     *
+     * @return non-empty-array<int>
+     */
+    private function specificities(CssParentNode $node): array
+    {
+        if ($node instanceof CssStyleRule) {
+            // Plain CSS style rule nesting implicitly wraps parent selectors in
+            // `:is()`, so they all match with the highest specificity among any of
+            // them.
+            if ($node->getParent() !== null) {
+                $parent = max($this->specificities($node->getParent()));
+            } else {
+                $parent = 0;
+            }
+
+            return array_map(fn (ComplexSelector $selector) => $parent + $selector->getSpecificity(), $node->getSelector()->getComponents());
+        }
+
+        if ($node->getParent() !== null) {
+            return $this->specificities($node->getParent());
+        }
+
+        return [0];
     }
 
     /**
@@ -509,12 +573,12 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
     // ## Values
 
-    public function visitBoolean(SassBoolean $value)
+    public function visitBoolean(SassBoolean $value): void
     {
-        $this->buffer->write($value->getValue() ? 'true': 'false');
+        $this->buffer->write($value->getValue() ? 'true' : 'false');
     }
 
-    public function visitCalculation(SassCalculation $value)
+    public function visitCalculation(SassCalculation $value): void
     {
         $this->buffer->write($value->getName());
         $this->buffer->writeChar('(');
@@ -535,13 +599,35 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
     private function writeCalculationValue(object $value): void
     {
-        if ($value instanceof Value) {
+        if ($value instanceof SassNumber && $value->hasComplexUnits() && !$this->inspect) {
+            throw new SassScriptException("$value is not a valid CSS value.");
+        }
+        if ($value instanceof SassNumber && !is_finite($value->getValue())) {
+            if (is_nan($value->getValue())) {
+                $this->buffer->write('NaN');
+            } elseif ($value->getValue() > 0) {
+                $this->buffer->write('infinity');
+            } else {
+                $this->buffer->write('-infinity');
+            }
+
+            $this->writeCalculationUnits($value->getNumeratorUnits(), $value->getDenominatorUnits());
+        } elseif ($value instanceof SassNumber && $value->hasComplexUnits()) {
+            $this->writeNumber($value->getValue());
+
+            $firstUnit = $value->getNumeratorUnits()[0] ?? null;
+
+            if ($firstUnit !== null) {
+                $this->buffer->write($firstUnit);
+                $this->writeCalculationUnits(array_slice($value->getNumeratorUnits(), 1), $value->getDenominatorUnits());
+            } else {
+                $this->writeCalculationUnits([], $value->getDenominatorUnits());
+            }
+        } elseif ($value instanceof Value) {
             $value->accept($this);
-        } elseif ($value instanceof CalculationInterpolation) {
-            $this->buffer->write($value->getValue());
         } elseif ($value instanceof CalculationOperation) {
             $left = $value->getLeft();
-            $parenthesizeLeft = $left instanceof CalculationInterpolation || ($left instanceof CalculationOperation && CalculationOperator::getPrecedence($left->getOperator()) < CalculationOperator::getPrecedence($value->getOperator()));
+            $parenthesizeLeft = $left instanceof CalculationOperation && $left->getOperator()->getPrecedence() < $value->getOperator()->getPrecedence();
 
             if ($parenthesizeLeft) {
                 $this->buffer->writeChar('(');
@@ -551,17 +637,18 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
                 $this->buffer->writeChar(')');
             }
 
-            $operatorWhitespace = !$this->compressed || CalculationOperator::getPrecedence($value->getOperator()) === 1;
+            $operatorWhitespace = !$this->compressed || $value->getOperator()->getPrecedence() === 1;
             if ($operatorWhitespace) {
                 $this->buffer->writeChar(' ');
             }
-            $this->buffer->write($value->getOperator());
+            $this->buffer->write($value->getOperator()->getOperator());
             if ($operatorWhitespace) {
                 $this->buffer->writeChar(' ');
             }
 
             $right = $value->getRight();
-            $parenthesizeRight = $right instanceof CalculationInterpolation || ($right instanceof CalculationOperation && $this->parenthesizeCalculationRhs($value->getOperator(), $right->getOperator()));
+            $parenthesizeRight = ($right instanceof CalculationOperation && $this->parenthesizeCalculationRhs($value->getOperator(), $right->getOperator()))
+                || ($value->getOperator() === CalculationOperator::DIVIDED_BY && $right instanceof SassNumber && (is_finite($right->getValue()) ? $right->hasComplexUnits() : $right->hasUnits()));
 
             if ($parenthesizeRight) {
                 $this->buffer->writeChar('(');
@@ -574,15 +661,38 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
     }
 
     /**
+     * Writes the complex numerator and denominator units beyond the first
+     * numerator unit for a number as they appear in a calculation.
+     *
+     * @param list<string> $numeratorUnits
+     * @param list<string> $denominatorUnits
+     */
+    private function writeCalculationUnits(array $numeratorUnits, array $denominatorUnits): void
+    {
+        foreach ($numeratorUnits as $unit) {
+            $this->writeOptionalSpace();
+            $this->buffer->writeChar('*');
+            $this->writeOptionalSpace();
+            $this->buffer->writeChar('1');
+            $this->buffer->write($unit);
+        }
+
+        foreach ($denominatorUnits as $unit) {
+            $this->writeOptionalSpace();
+            $this->buffer->writeChar('/');
+            $this->writeOptionalSpace();
+            $this->buffer->writeChar('1');
+            $this->buffer->write($unit);
+        }
+    }
+
+    /**
      * Returns whether the right-hand operation of a calculation should be
      * parenthesized.
      *
      * In `a ? (b # c)`, `outer` is `?` and `right` is `#`.
-     *
-     * @phpstan-param CalculationOperator::* $outer
-     * @phpstan-param CalculationOperator::* $right
      */
-    private function parenthesizeCalculationRhs(string $outer, string $right): bool
+    private function parenthesizeCalculationRhs(CalculationOperator $outer, CalculationOperator $right): bool
     {
         if ($outer === CalculationOperator::DIVIDED_BY) {
             return true;
@@ -595,7 +705,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         return $right === CalculationOperator::PLUS || $right === CalculationOperator::MINUS;
     }
 
-    public function visitColor(SassColor $value)
+    public function visitColor(SassColor $value): void
     {
         $name = Colors::RGBaToColorName($value->getRed(), $value->getGreen(), $value->getBlue(), $value->getAlpha());
 
@@ -628,14 +738,18 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         $format = $value->getFormat();
 
         if ($format !== null) {
-            if ($format === ColorFormat::RGB_FUNCTION) {
+            if ($format === ColorFormatEnum::rgbFunction) {
                 $this->writeRgb($value);
-            } elseif ($format === ColorFormat::HSL_FUNCTION) {
+            } elseif ($format === ColorFormatEnum::hslFunction) {
                 $this->writeHsl($value);
-            } else {
+            } elseif ($format instanceof SpanColorFormat) {
                 $this->buffer->write($format->getOriginal());
+            } else {
+                // should not happen as our interface is sealed.
+                \assert(false, 'unknown format');
             }
-        } elseif ($name !== null &&
+        } elseif (
+            $name !== null &&
             // Always emit generated transparent colors in rgba format. This works
             // around an IE bug. See https://github.com/sass/sass/issues/1782.
             !NumberUtil::fuzzyEquals($value->getAlpha(), 0)
@@ -680,7 +794,6 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         $opaque = NumberUtil::fuzzyEquals($value->getAlpha(), 1);
         $this->buffer->write($opaque ? 'hsl(' : 'hsla(');
         $this->writeNumber($value->getHue());
-        $this->buffer->write('deg');
         $this->buffer->write($this->getCommaSeparator());
         $this->writeNumber($value->getSaturation());
         $this->buffer->writeChar('%');
@@ -721,18 +834,29 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         $this->buffer->write(str_pad(dechex($color), 2, '0', STR_PAD_LEFT));
     }
 
-    public function visitFunction(SassFunction $value)
+    public function visitFunction(SassFunction $value): void
     {
         if (!$this->inspect) {
             throw new SassScriptException("$value is not a valid CSS value.");
         }
 
         $this->buffer->write('get-function(');
-        $this->visitQuotedString($value->getName());
+        $this->visitQuotedString($value->getCallable()->getName());
         $this->buffer->writeChar(')');
     }
 
-    public function visitList(SassList $value)
+    public function visitMixin(SassMixin $value): void
+    {
+        if (!$this->inspect) {
+            throw new SassScriptException("$value is not a valid CSS value.");
+        }
+
+        $this->buffer->write('get-mixin(');
+        $this->visitQuotedString($value->getCallable()->getName());
+        $this->buffer->writeChar(')');
+    }
+
+    public function visitList(SassList $value): void
     {
         if ($value->hasBrackets()) {
             $this->buffer->writeChar('[');
@@ -780,7 +904,8 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
 
         if ($singleton) {
-            $this->buffer->write($value->getSeparator());
+            \assert($value->getSeparator()->getSeparator() !== null, 'The list separator is not undecided at that point.');
+            $this->buffer->write($value->getSeparator()->getSeparator());
 
             if (!$value->hasBrackets()) {
                 $this->buffer->writeChar(')');
@@ -792,42 +917,25 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    /**
-     * @phpstan-param ListSeparator::* $separator
-     */
-    private function separatorString(string $separator): string
+    private function separatorString(ListSeparator $separator): string
     {
-        switch ($separator) {
-            case ListSeparator::COMMA:
-                return $this->getCommaSeparator();
-
-            case ListSeparator::SLASH:
-                return $this->compressed ? '/' : ' / ';
-
-            case ListSeparator::SPACE:
-                return ' ';
-
-            default:
-                /**
-                 * This should never be used, but it may still be returned since
-                 * {@see separatorString} is invoked eagerly by {@see writeList} even for lists
-                 * with only one element.
-                 */
-                return '';
-        }
+        return match ($separator) {
+            ListSeparator::COMMA => $this->getCommaSeparator(),
+            ListSeparator::SLASH => $this->compressed ? '/' : ' / ',
+            ListSeparator::SPACE => ' ',
+            /**
+             * This should never be used, but it may still be returned since
+             * {@see separatorString} is invoked eagerly by {@see writeList} even for lists
+             * with only one element.
+             */
+            default => '',
+        };
     }
 
     /**
      * Returns whether the value needs parentheses as an element in a list with the given separator.
-     *
-     * @param string $separator
-     * @param Value $value
-     *
-     * @return bool
-     *
-     * @phpstan-param ListSeparator::* $separator
      */
-    private static function elementNeedsParens(string $separator, Value $value): bool
+    private static function elementNeedsParens(ListSeparator $separator, Value $value): bool
     {
         if (!$value instanceof SassList) {
             return false;
@@ -841,19 +949,14 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             return false;
         }
 
-        switch ($separator) {
-            case ListSeparator::COMMA:
-                return $value->getSeparator() === ListSeparator::COMMA;
-
-            case ListSeparator::SLASH:
-                return $value->getSeparator() === ListSeparator::COMMA || $value->getSeparator() === ListSeparator::SLASH;
-
-            default:
-                return $value->getSeparator() !== ListSeparator::UNDECIDED;
-        }
+        return match ($separator) {
+            ListSeparator::COMMA => $value->getSeparator() === ListSeparator::COMMA,
+            ListSeparator::SLASH => $value->getSeparator() === ListSeparator::COMMA || $value->getSeparator() === ListSeparator::SLASH,
+            default => $value->getSeparator() !== ListSeparator::UNDECIDED,
+        };
     }
 
-    public function visitMap(SassMap $value)
+    public function visitMap(SassMap $value): void
     {
         if (!$this->inspect) {
             throw new SassScriptException("$value is not a valid CSS value.");
@@ -894,14 +997,14 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    public function visitNull()
+    public function visitNull(): void
     {
         if ($this->inspect) {
             $this->buffer->write('null');
         }
     }
 
-    public function visitNumber(SassNumber $value)
+    public function visitNumber(SassNumber $value): void
     {
         $asSlash = $value->getAsSlash();
 
@@ -913,26 +1016,29 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             return;
         }
 
-        $this->writeNumber($value->getValue());
+        if (!is_finite($value->getValue())) {
+            $this->visitCalculation(SassCalculation::unsimplified('calc', [$value]));
+            return;
+        }
 
-        if (!$this->inspect) {
-            if (\count($value->getNumeratorUnits()) > 1 || \count($value->getDenominatorUnits()) > 0) {
+        if ($value->hasComplexUnits()) {
+            if (!$this->inspect) {
                 throw new SassScriptException("$value is not a valid CSS value.");
             }
+
+            $this->visitCalculation(SassCalculation::unsimplified('calc', [$value]));
+        } else {
+            $this->writeNumber($value->getValue());
 
             if (\count($value->getNumeratorUnits()) > 0) {
                 $this->buffer->write($value->getNumeratorUnits()[0]);
             }
-        } else {
-            $this->buffer->write($value->getUnitString());
         }
     }
 
     /**
      * Writes $number without exponent notation and with at most
      * {@see SassNumber::PRECISION} digits after the decimal point.
-     *
-     * @param float $number
      */
     private function writeNumber(float $number): void
     {
@@ -958,12 +1064,207 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             return;
         }
 
-        $output = number_format($number, SassNumber::PRECISION, '.', '');
 
-        $this->buffer->write(rtrim(rtrim($output, '0'), '.'));
+        $text = $this->removeExponent((string) $number);
+
+        // Any double that's less than `SassNumber.precision + 2` digits long is
+        // guaranteed to be safe to emit directly, since it'll contain at most `0.`
+        // followed by [SassNumber.precision] digits.
+        $canWriteDirectly = \strlen($text) < SassNumber::PRECISION + 2;
+
+        if ($canWriteDirectly) {
+            if ($this->compressed && $text[0] === '0') {
+                $text = substr($text, 1);
+            }
+
+            $this->buffer->write($text);
+            return;
+        }
+
+        $this->writeRounded($text);
     }
 
-    public function visitString(SassString $value)
+    /**
+     * If $text is written in exponent notation, returns a string representation
+     * of it without exponent notation.
+     *
+     * Otherwise, returns $text as-is.
+     */
+    private function removeExponent(string $text): string
+    {
+        $exponentDelimiterPosition = strpos($text, 'E');
+
+        if ($exponentDelimiterPosition === false) {
+            return $text;
+        }
+
+        $negative = $text[0] === '-';
+
+        $buffer = $text[0];
+
+        // If the number has more than one significant digit, the second
+        // character will be a decimal point that we don't want to include in
+        // the generated number.
+        if ($negative) {
+            $buffer .= $text[1];
+
+            if ($exponentDelimiterPosition > 3) {
+                $buffer .= substr($text, 3, $exponentDelimiterPosition - 3);
+            }
+        } elseif ($exponentDelimiterPosition > 2) {
+            $buffer .= substr($text, 2, $exponentDelimiterPosition - 2);
+        }
+
+        $exponent = intval(substr($text, $exponentDelimiterPosition + 1));
+
+        if ($exponent > 0) {
+            // Write an additional zero for each exponent digits other than those
+            // already written to the buffer. We subtract 1 from `buffer.length`
+            // because the first digit doesn't count towards the exponent. Subtract 1
+            // more for negative numbers because of the `-` written to the buffer.
+            $additionalZeroes = $exponent - (\strlen($buffer) - 1 - ($negative ? 1 : 0));
+            $buffer .= str_repeat('0', $additionalZeroes);
+
+            return $buffer;
+        }
+
+        $result = '';
+        if ($negative) {
+            $result .= '-';
+        }
+        $result .= '0.';
+        for ($i = -1; $i > $exponent; --$i) {
+            $result .= '0';
+        }
+
+        $result .= $negative ? substr($buffer, 1) : $buffer;
+
+        return $result;
+    }
+
+    /**
+     * Assuming $text is a number written without exponent notation, rounds it
+     * to {@see SassNumber::PRECISION} digits after the decimal and writes the result
+     * to {@see $buffer}.
+     */
+    private function writeRounded(string $text): void
+    {
+        \assert(preg_match('/^-?\d+(\.\d+)?$/D', $text) === 1, "\"$text\" should be a number written without exponent notation.");
+
+        // We need to ensure that we write at most [SassNumber.precision] digits
+        // after the decimal point, and that we round appropriately if necessary. To
+        // do this, we maintain an intermediate buffer of digits (both before and
+        // after the decimal point), which we then write to [_buffer] as text. We
+        // start writing after the first digit to give us room to round up to a
+        // higher decimal place than was represented in the original number.
+        $digits = array_fill(0, \strlen($text) + 1, 0);
+        $digitsIndex = 1;
+
+        // Write the digits before the decimal to $digits.
+        $textIndex = 0;
+        $negative = $text[0] === '-';
+        if ($negative) {
+            $textIndex++;
+        }
+
+        while (true) {
+            if ($textIndex === \strlen($text)) {
+                // If we get here, $text has no decimal point. It definitely doesn't
+                // need to be rounded; we can write it as-is.
+                $this->buffer->write($text);
+                return;
+            }
+
+            $codeUnit = $text[$textIndex++];
+            if ($codeUnit === '.') {
+                break;
+            }
+
+            $digits[$digitsIndex++] = intval($codeUnit);
+        }
+
+        $firstFractionalDigit = $digitsIndex;
+
+        // Only write at most PRECISION digits after the decimal. If there aren't
+        // that many digits left in the number, write it as-is since no rounding or
+        // truncation is needed.
+        $indexAfterPrecision = $textIndex + SassNumber::PRECISION;
+        if ($indexAfterPrecision >= \strlen($text)) {
+            $this->buffer->write($text);
+            return;
+        }
+
+        // Write the digits after the decimal to $digits.
+        while ($textIndex < $indexAfterPrecision) {
+            $digits[$digitsIndex++] = intval($text[$textIndex++]);
+        }
+
+        // Round the trailing digits in $digits up if necessary.
+        if (intval($text[$textIndex]) >= 5) {
+            while (true) {
+                // $digitsIndex is guaranteed to be >0 here because we added a leading
+                // 0 to $digits when we constructed it, so even if we round everything
+                // up $newDigit will always be 1 when $digitsIndex is 1.
+                $newDigit = ++$digits[$digitsIndex - 1];
+
+                if ($newDigit !== 10) {
+                    break;
+                }
+                $digitsIndex--;
+            }
+        }
+
+        // At most one of the following loops will actually execute. If we rounded
+        // digits up before the decimal point, the first loop will set those digits
+        // to 0 (rather than 10, which is not a valid decimal digit). On the other
+        // hand, if we have trailing zeros left after the decimal point, the second
+        // loop will move $digitsIndex before them and cause them not to be
+        // written. Either way, $digitsIndex will end up >= $firstFractionalDigit.
+        for (; $digitsIndex < $firstFractionalDigit; $digitsIndex++) {
+            $digits[$digitsIndex] = 0;
+        }
+        while ($digitsIndex > $firstFractionalDigit && $digits[$digitsIndex - 1] === 0) {
+            $digitsIndex--;
+        }
+
+        // Omit the minus sign if the number ended up being rounded to exactly zero,
+        // write "0" explicit to avoid adding a minus sign or omitting the number
+        // entirely in compressed mode.
+        if ($digitsIndex === 2 && $digits[0] === 0 && $digits[1] == 0) {
+            $this->buffer->writeChar('0');
+            return;
+        }
+
+        if ($negative) {
+            $this->buffer->writeChar('-');
+        }
+
+        // Write the digits before the decimal point to $buffer. Omit the leading
+        // 0 that's added to $digits to accommodate rounding, and in compressed
+        // mode omit the 0 before the decimal point as well.
+        $writtenIndex = 0;
+
+        if ($digits[0] === 0) {
+            $writtenIndex++;
+            if ($this->compressed && $digits[1] === 0) {
+                $writtenIndex++;
+            }
+        }
+
+        for (; $writtenIndex < $firstFractionalDigit; $writtenIndex++) {
+            $this->buffer->writeChar((string) $digits[$writtenIndex]);
+        }
+
+        if ($digitsIndex > $firstFractionalDigit) {
+            $this->buffer->writeChar('.');
+
+            for (; $writtenIndex < $digitsIndex; $writtenIndex++) {
+                $this->buffer->writeChar((string) $digits[$writtenIndex]);
+            }
+        }
+    }
+
+    public function visitString(SassString $value): void
     {
         if ($this->quote && $value->hasQuotes()) {
             $this->visitQuotedString($value->getText());
@@ -974,8 +1275,8 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
     private function visitQuotedString(string $string): void
     {
-        $includesDoubleQuote = false !== strpos($string, '"');
-        $includesSingleQuote = false !== strpos($string, '\'');
+        $includesDoubleQuote = str_contains($string, '"');
+        $includesSingleQuote = str_contains($string, '\'');
         $forceDoubleQuotes = $includesSingleQuote && $includesDoubleQuote;
         $quote = $forceDoubleQuotes || !$includesDoubleQuote ? '"' : "'";
 
@@ -1013,6 +1314,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
                 case "\xD":
                 case "\xE":
                 case "\xF":
+                case "\x10":
                 case "\x11":
                 case "\x12":
                 case "\x13":
@@ -1028,6 +1330,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
                 case "\x1D":
                 case "\x1E":
                 case "\x1F":
+                case "\x7F":
                     $this->writeEscape($this->buffer, $char, $string, $i);
                     break;
 
@@ -1101,7 +1404,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      * characters are often used for glyph fonts, where it's useful for readers
      * to be able to distinguish between them in the rendered stylesheet.
      */
-    private function tryPrivateUseCharacter(StringBuffer $buffer, string $char, string $string, int $i): ?int
+    private function tryPrivateUseCharacter(SourceMapBuffer $buffer, string $char, string $string, int $i): ?int
     {
         if ($this->compressed) {
             return null;
@@ -1126,13 +1429,14 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
         if ($extraBytes) {
             $fullChar = substr($string, $i, $extraBytes + 1);
-            $charCode = Util::mbOrd($fullChar);
+            $charCode = mb_ord($fullChar, 'UTF-8');
         } else {
             $fullChar = $char;
             $charCode = $firstByteCode;
         }
 
-        if ($charCode >= 0xE000 && $charCode <= 0xF8FF || // PUA of the BMP
+        if (
+            $charCode >= 0xE000 && $charCode <= 0xF8FF || // PUA of the BMP
             $charCode >= 0xF0000 && $charCode <= 0x10FFFF // Supplementary PUAs of the planes 15 and 16
         ) {
             $this->writeEscape($buffer, $fullChar, $string, $i + $extraBytes);
@@ -1151,10 +1455,10 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      * are used to write a trailing space after the escape if necessary to
      * disambiguate it from the next character.
      */
-    private function writeEscape(StringBuffer $buffer, string $character, string $string, int $i): void
+    private function writeEscape(SourceMapBuffer $buffer, string $character, string $string, int $i): void
     {
         $buffer->writeChar('\\');
-        $buffer->write(dechex(Util::mbOrd($character)));
+        $buffer->write(dechex(mb_ord($character, 'UTF-8')));
 
         if (\strlen($string) === $i + 1) {
             return;
@@ -1169,7 +1473,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
     // ## Selectors
 
-    public function visitAttributeSelector(AttributeSelector $attribute)
+    public function visitAttributeSelector(AttributeSelector $attribute): void
     {
         $this->buffer->writeChar('[');
         $this->buffer->write($attribute->getName());
@@ -1178,11 +1482,11 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
         if ($value !== null) {
             assert($attribute->getOp() !== null);
-            $this->buffer->write($attribute->getOp());
+            $this->buffer->write($attribute->getOp()->getText());
 
             // Emit identifiers that start with `--` with quotes, because IE11
             // doesn't consider them to be valid identifiers.
-            if (Parser::isIdentifier($value) && 0 !== strpos($value, '--')) {
+            if (Parser::isIdentifier($value) && !str_starts_with($value, '--')) {
                 $this->buffer->write($value);
 
                 if ($attribute->getModifier() !== null) {
@@ -1204,13 +1508,13 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         $this->buffer->writeChar(']');
     }
 
-    public function visitClassSelector(ClassSelector $klass)
+    public function visitClassSelector(ClassSelector $klass): void
     {
         $this->buffer->writeChar('.');
         $this->buffer->write($klass->getName());
     }
 
-    public function visitComplexSelector(ComplexSelector $complex)
+    public function visitComplexSelector(ComplexSelector $complex): void
     {
         $this->writeCombinators($complex->getLeadingCombinators());
 
@@ -1237,9 +1541,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      * Writes $combinators to {@see buffer}, with spaces in between in expanded
      * mode.
      *
-     * @param string[] $combinators
-     *
-     * @return void
+     * @param list<CssValue<Combinator>> $combinators
      */
     private function writeCombinators(array $combinators): void
     {
@@ -1248,7 +1550,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         });
     }
 
-    public function visitCompoundSelector(CompoundSelector $compound)
+    public function visitCompoundSelector(CompoundSelector $compound): void
     {
         $start = $this->buffer->getLength();
 
@@ -1264,13 +1566,13 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    public function visitIDSelector(IDSelector $id)
+    public function visitIDSelector(IDSelector $id): void
     {
         $this->buffer->writeChar('#');
         $this->buffer->write($id->getName());
     }
 
-    public function visitSelectorList(SelectorList $list)
+    public function visitSelectorList(SelectorList $list): void
     {
         $first = true;
 
@@ -1286,6 +1588,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
                 if ($complex->getLineBreak()) {
                     $this->writeLineFeed();
+                    $this->writeIndentation();
                 } else {
                     $this->writeOptionalSpace();
                 }
@@ -1295,7 +1598,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    public function visitParentSelector(ParentSelector $parent)
+    public function visitParentSelector(ParentSelector $parent): void
     {
         $this->buffer->writeChar('&');
 
@@ -1304,13 +1607,13 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         }
     }
 
-    public function visitPlaceholderSelector(PlaceholderSelector $placeholder)
+    public function visitPlaceholderSelector(PlaceholderSelector $placeholder): void
     {
         $this->buffer->writeChar('%');
         $this->buffer->write($placeholder->getName());
     }
 
-    public function visitPseudoSelector(PseudoSelector $pseudo)
+    public function visitPseudoSelector(PseudoSelector $pseudo): void
     {
         $innerSelector = $pseudo->getSelector();
 
@@ -1346,12 +1649,12 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
         $this->buffer->writeChar(')');
     }
 
-    public function visitTypeSelector(TypeSelector $type)
+    public function visitTypeSelector(TypeSelector $type): void
     {
         $this->buffer->write($type->getName());
     }
 
-    public function visitUniversalSelector(UniversalSelector $universal)
+    public function visitUniversalSelector(UniversalSelector $universal): void
     {
         if ($universal->getNamespace() !== null) {
             $this->buffer->write($universal->getNamespace());
@@ -1367,15 +1670,15 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      *
      * @template T
      *
-     * @param AstNode  $node
      * @param callable(): T $callback
      *
      * @return T
+     *
+     * @param-immediately-invoked-callable $callback
      */
     private function for(AstNode $node, callable $callback)
     {
-        // TODO implement sourcemap tracking
-        return $callback();
+        return $this->buffer->forSpan($node->getSpan(), $callback);
     }
 
     /**
@@ -1409,7 +1712,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
 
             if ($this->isTrailingComment($child, $previous ?? $parent)) {
                 $this->writeOptionalSpace();
-                $this->withoutIndendation(function () use ($child) {
+                $this->withoutIndentation(function () use ($child) {
                     $child->accept($this);
                 });
             } else {
@@ -1428,7 +1731,7 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
                 $this->buffer->writeChar(';');
             }
 
-            if ($prePrevious !== null && $this->isTrailingComment($previous, $parent)) {
+            if ($prePrevious === null && $this->isTrailingComment($previous, $parent)) {
                 $this->writeOptionalSpace();
             } else {
                 $this->writeLineFeed();
@@ -1463,6 +1766,10 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             return false;
         }
 
+        if ($node->getSpan()->getSourceUrl() !== $previous->getSpan()->getSourceUrl()) {
+            return false;
+        }
+
         if (!SpanUtil::contains($previous->getSpan(), $node->getSpan())) {
             return $node->getSpan()->getStart()->getLine() === $previous->getSpan()->getEnd()->getLine();
         }
@@ -1479,7 +1786,8 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
             return false;
         }
 
-        $endOffset = strrpos($previous->getSpan()->getText(), '{', $searchFrom);
+        $previousSpanText = $previous->getSpan()->getText();
+        $endOffset = strrpos($previousSpanText, '{', $searchFrom - \strlen($previousSpanText));
         if ($endOffset === false) {
             $endOffset = 0;
         }
@@ -1530,8 +1838,9 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      * @template T
      *
      * @param iterable<T>       $iterable
-     * @param string            $text
      * @param callable(T): void $callback
+     *
+     * @param-immediately-invoked-callable $callback
      */
     private function writeBetween(iterable $iterable, string $text, callable $callback): void
     {
@@ -1553,13 +1862,15 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      */
     private function getCommaSeparator(): string
     {
-        return $this->compressed ? ',': ', ';
+        return $this->compressed ? ',' : ', ';
     }
 
     /**
      * Runs $callback with indentation increased one level.
      *
      * @param callable(): void $callback
+     *
+     * @param-immediately-invoked-callable $callback
      */
     private function indent(callable $callback): void
     {
@@ -1572,8 +1883,10 @@ final class SerializeVisitor implements CssVisitor, ValueVisitor, SelectorVisito
      * Runs $callback without any indentation.
      *
      * @param callable(): void $callback
+     *
+     * @param-immediately-invoked-callable $callback
      */
-    private function withoutIndendation(callable $callback): void
+    private function withoutIndentation(callable $callback): void
     {
         $savedIndentation = $this->indentation;
         $this->indentation = 0;

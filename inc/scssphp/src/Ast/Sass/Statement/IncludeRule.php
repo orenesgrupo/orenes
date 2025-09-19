@@ -16,9 +16,9 @@ use ScssPhp\ScssPhp\Ast\Sass\ArgumentInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\CallableInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\SassReference;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Util\SpanUtil;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A mixin invocation.
@@ -27,39 +27,22 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class IncludeRule implements Statement, CallableInvocation, SassReference
 {
-    /**
-     * @var string|null
-     * @readonly
-     */
-    private $namespace;
+    private readonly ?string $namespace;
 
-    /**
-     * @var string
-     * @readonly
-     */
-    private $name;
+    private readonly string $name;
 
-    /**
-     * @var ArgumentInvocation
-     * @readonly
-     */
-    private $arguments;
+    private readonly string $originalName;
 
-    /**
-     * @var ContentBlock|null
-     * @readonly
-     */
-    private $content;
+    private readonly ArgumentInvocation $arguments;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly ?ContentBlock $content;
 
-    public function __construct(string $name, ArgumentInvocation $arguments, FileSpan $span, ?string $namespace = null,?ContentBlock $content = null)
+    private readonly FileSpan $span;
+
+    public function __construct(string $originalName, ArgumentInvocation $arguments, FileSpan $span, ?string $namespace = null, ?ContentBlock $content = null)
     {
-        $this->name = $name;
+        $this->originalName = $originalName;
+        $this->name = str_replace('_', '-', $originalName);
         $this->arguments = $arguments;
         $this->span = $span;
         $this->namespace = $namespace;
@@ -74,6 +57,15 @@ final class IncludeRule implements Statement, CallableInvocation, SassReference
     public function getName(): string
     {
         return $this->name;
+    }
+
+    /**
+     * The original name of the mixin being invoked, without underscores
+     * converted to hyphens.
+     */
+    public function getOriginalName(): string
+    {
+        return $this->originalName;
     }
 
     public function getArguments(): ArgumentInvocation

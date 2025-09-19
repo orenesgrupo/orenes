@@ -15,6 +15,7 @@ namespace ScssPhp\ScssPhp\Ast\Selector;
 use ScssPhp\ScssPhp\Util;
 use ScssPhp\ScssPhp\Util\EquatableUtil;
 use ScssPhp\ScssPhp\Visitor\SelectorVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A pseudo-class or pseudo-element selector.
@@ -23,65 +24,44 @@ use ScssPhp\ScssPhp\Visitor\SelectorVisitor;
  * selectors take arguments, including other selectors. Sass manually encodes
  * logic for each pseudo selector that takes a selector as an argument, to
  * ensure that extension and other selector operations work properly.
+ *
+ * @internal
  */
 final class PseudoSelector extends SimpleSelector
 {
     /**
      * The name of this selector.
-     *
-     * @var string
-     * @readonly
      */
-    private $name;
+    private readonly string $name;
 
     /**
      * Like {@see name}, but without any vendor prefixes.
-     *
-     * @var string
-     * @readonly
      */
-    private $normalizedName;
+    private readonly string $normalizedName;
 
-    /**
-     * @var bool
-     * @readonly
-     */
-    private $isClass;
+    private readonly bool $isClass;
 
-    /**
-     * @var bool
-     * @readonly
-     */
-    private $isSyntacticClass;
+    private readonly bool $isSyntacticClass;
 
     /**
      * The non-selector argument passed to this selector.
      *
      * This is `null` if there's no argument. If {@see argument} and {@see selector} are
      * both non-`null`, the selector follows the argument.
-     *
-     * @var string|null
-     * @readonly
      */
-    private $argument;
+    private readonly ?string $argument;
 
     /**
      * The selector argument passed to this selector.
      *
      * This is `null` if there's no selector. If {@see argument} and {@see selector} are
      * both non-`null`, the selector follows the argument.
-     *
-     * @var SelectorList|null
-     * @readonly
      */
-    private $selector;
+    private readonly ?SelectorList $selector;
 
-    /**
-     * @var int|null
-     */
-    private $specificity;
+    private ?int $specificity = null;
 
-    public function __construct(string $name, bool $element = false, ?string $argument = null, ?SelectorList $selector = null)
+    public function __construct(string $name, FileSpan $span, bool $element = false, ?string $argument = null, ?SelectorList $selector = null)
     {
         $this->name = $name;
         $this->isClass = !$element && !self::isFakePseudoElement($name);
@@ -89,6 +69,7 @@ final class PseudoSelector extends SimpleSelector
         $this->argument = $argument;
         $this->selector = $selector;
         $this->normalizedName = Util::unvendor($name);
+        parent::__construct($span);
     }
 
     /**
@@ -215,6 +196,14 @@ final class PseudoSelector extends SimpleSelector
         return $this->specificity;
     }
 
+    /**
+     * @internal
+     */
+    public function hasComplicatedSuperselectorSemantics(): bool
+    {
+        return $this->isElement() || $this->selector !== null;
+    }
+
     private function computeSpecificity(): int
     {
         if ($this->isElement()) {
@@ -258,7 +247,7 @@ final class PseudoSelector extends SimpleSelector
 
     public function withSelector(SelectorList $selector): PseudoSelector
     {
-        return new PseudoSelector($this->name, $this->isElement(), $this->argument, $selector);
+        return new PseudoSelector($this->name, $this->getSpan(), $this->isElement(), $this->argument, $selector);
     }
 
     public function addSuffix(string $suffix): SimpleSelector
@@ -267,7 +256,7 @@ final class PseudoSelector extends SimpleSelector
             parent::addSuffix($suffix);
         }
 
-        return new PseudoSelector($this->name . $suffix, $this->isElement());
+        return new PseudoSelector($this->name . $suffix, $this->getSpan(), $this->isElement());
     }
 
     public function unify(array $compound): ?array
@@ -286,7 +275,7 @@ final class PseudoSelector extends SimpleSelector
             }
         }
 
-        if (EquatableUtil::listContains($compound, $this)) {
+        if (EquatableUtil::iterableContains($compound, $this)) {
             return $compound;
         }
 
@@ -339,7 +328,7 @@ final class PseudoSelector extends SimpleSelector
 
         // Fall back to the logic defined in ExtendUtil, which knows how to
         // compare selector pseudoclasses against raw selectors.
-        return (new CompoundSelector([$this]))->isSuperselector(new CompoundSelector([$other]));
+        return (new CompoundSelector([$this], $this->getSpan()))->isSuperselector(new CompoundSelector([$other], $this->getSpan()));
     }
 
     public function accept(SelectorVisitor $visitor)

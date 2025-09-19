@@ -13,7 +13,7 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\SupportsCondition;
 
 use ScssPhp\ScssPhp\Ast\Sass\SupportsCondition;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * A negated condition.
@@ -24,17 +24,10 @@ final class SupportsNegation implements SupportsCondition
 {
     /**
      * The condition that's been negated.
-     *
-     * @var SupportsCondition
-     * @readonly
      */
-    private $condition;
+    private readonly SupportsCondition $condition;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(SupportsCondition $condition, FileSpan $span)
     {

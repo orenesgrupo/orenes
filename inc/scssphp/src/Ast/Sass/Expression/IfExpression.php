@@ -16,8 +16,8 @@ use ScssPhp\ScssPhp\Ast\Sass\ArgumentDeclaration;
 use ScssPhp\ScssPhp\Ast\Sass\ArgumentInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\CallableInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A ternary expression.
@@ -32,22 +32,12 @@ final class IfExpression implements Expression, CallableInvocation
 {
     /**
      * The arguments passed to `if()`.
-     *
-     * @var ArgumentInvocation
-     * @readonly
      */
-    private $arguments;
+    private readonly ArgumentInvocation $arguments;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
-    /**
-     * @var ArgumentDeclaration|null
-     */
-    private static $declaration;
+    private static ?ArgumentDeclaration $declaration = null;
 
     public function __construct(ArgumentInvocation $arguments, FileSpan $span)
     {

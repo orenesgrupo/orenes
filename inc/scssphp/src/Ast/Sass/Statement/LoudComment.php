@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A loud CSS-style comment.
@@ -24,11 +24,7 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class LoudComment implements Statement
 {
-    /**
-     * @var Interpolation
-     * @readonly
-     */
-    private $text;
+    private readonly Interpolation $text;
 
     public function __construct(Interpolation $text)
     {

@@ -14,7 +14,7 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Import;
 
 use ScssPhp\ScssPhp\Ast\Sass\Import;
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * An import that produces a plain CSS `@import` rule.
@@ -27,26 +27,16 @@ final class StaticImport implements Import
      * The URL for this import.
      *
      * This already contains quotes.
-     *
-     * @var Interpolation
-     * @readonly
      */
-    private $url;
+    private readonly Interpolation $url;
 
     /**
      * The modifiers (such as media or supports queries) attached to this import,
      * or `null` if none are attached.
-     *
-     * @var Interpolation|null
-     * @readonly
      */
-    private $modifiers;
+    private readonly ?Interpolation $modifiers;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(Interpolation $url, FileSpan $span, ?Interpolation $modifiers = null)
     {

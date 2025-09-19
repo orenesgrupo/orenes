@@ -15,8 +15,8 @@ namespace ScssPhp\ScssPhp\Serializer;
 use ScssPhp\ScssPhp\Ast\Css\CssNode;
 use ScssPhp\ScssPhp\Ast\Selector\Selector;
 use ScssPhp\ScssPhp\Exception\SassScriptException;
+use ScssPhp\ScssPhp\Logger\LoggerInterface;
 use ScssPhp\ScssPhp\OutputStyle;
-use ScssPhp\ScssPhp\Util;
 use ScssPhp\ScssPhp\Value\Value;
 
 /**
@@ -24,18 +24,15 @@ use ScssPhp\ScssPhp\Value\Value;
  */
 final class Serializer
 {
-    /**
-     * @phpstan-param OutputStyle::* $style
-     */
-    public static function serialize(CssNode $node, bool $inspect = false, string $style = OutputStyle::EXPANDED, bool $sourceMap = false, bool $charset = true): SerializeResult
+    public static function serialize(CssNode $node, bool $inspect = false, OutputStyle $style = OutputStyle::EXPANDED, bool $sourceMap = false, bool $charset = true, ?LoggerInterface $logger = null): SerializeResult
     {
-        $visitor = new SerializeVisitor($inspect, true, $style);
+        $visitor = new SerializeVisitor($inspect, true, $style, $sourceMap, $logger);
         $node->accept($visitor);
         $css = (string) $visitor->getBuffer();
 
         $prefix = '';
 
-        if ($charset && strlen($css) !== Util::mbStrlen($css)) {
+        if ($charset && strlen($css) !== mb_strlen($css, 'UTF-8')) {
             if ($style === OutputStyle::COMPRESSED) {
                 $prefix = "\u{FEFF}";
             } else {
@@ -43,9 +40,10 @@ final class Serializer
             }
         }
 
-        // TODO build the source map
-
-        return new SerializeResult($prefix . $css);
+        return new SerializeResult(
+            $prefix . $css,
+            $sourceMap ? $visitor->getBuffer()->buildSourceMap($prefix) : null,
+        );
     }
 
     /**

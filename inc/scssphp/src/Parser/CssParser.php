@@ -14,13 +14,14 @@ namespace ScssPhp\ScssPhp\Parser;
 
 use ScssPhp\ScssPhp\Ast\Sass\ArgumentInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
-use ScssPhp\ScssPhp\Ast\Sass\Expression\InterpolatedFunctionExpression;
+use ScssPhp\ScssPhp\Ast\Sass\Expression\FunctionExpression;
+use ScssPhp\ScssPhp\Ast\Sass\Expression\ParenthesizedExpression;
 use ScssPhp\ScssPhp\Ast\Sass\Expression\StringExpression;
 use ScssPhp\ScssPhp\Ast\Sass\Import\StaticImport;
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
 use ScssPhp\ScssPhp\Ast\Sass\Statement\ImportRule;
-use ScssPhp\ScssPhp\Compiler;
+use ScssPhp\ScssPhp\Function\FunctionRegistry;
 
 /**
  * A parser for imported CSS files.
@@ -35,6 +36,7 @@ final class CssParser extends ScssParser
     private const CSS_ALLOWED_FUNCTIONS = [
         'rgb' => true, 'rgba' => true, 'hsl' => true, 'hsla' => true, 'grayscale' => true,
         'invert' => true, 'alpha' => true, 'opacity' => true, 'saturate' => true,
+        'min' => true, 'max' => true, 'round' => true, 'abs' => true,
     ];
 
     protected function isPlainCss(): bool
@@ -42,8 +44,12 @@ final class CssParser extends ScssParser
         return true;
     }
 
-    protected function silentComment(): void
+    protected function silentComment(): bool
     {
+        if ($this->inExpression()) {
+            return false;
+        }
+
         $start = $this->scanner->getPosition();
         parent::silentComment();
         $this->error("Silent comments aren't allowed in plain CSS.", $this->scanner->spanFrom($start));
@@ -57,40 +63,33 @@ final class CssParser extends ScssParser
         $name = $this->interpolatedIdentifier();
         $this->whitespace();
 
-        switch ($name->getAsPlain()) {
-            case 'at-root':
-            case 'content':
-            case 'debug':
-            case 'each':
-            case 'error':
-            case 'extend':
-            case 'for':
-            case 'function':
-            case 'if':
-            case 'include':
-            case 'mixin':
-            case 'return':
-            case 'warn':
-            case 'while':
-                $this->almostAnyValue();
-                $this->error("This at-rule isn't allowed in plain CSS.", $this->scanner->spanFrom($start));
+        return match ($name->getAsPlain()) {
+            'at-root',
+            'content',
+            'debug',
+            'each',
+            'error',
+            'extend',
+            'for',
+            'function',
+            'if',
+            'include',
+            'mixin',
+            'return',
+            'warn',
+            'while' => $this->forbiddenAtRule($start),
+            'import' => $this->cssImportRule($start),
+            'media' => $this->mediaRule($start),
+            '-moz-document' => $this->mozDocumentRule($start, $name),
+            'supports' => $this->supportsRule($start),
+            default => $this->unknownAtRule($start, $name),
+        };
+    }
 
-            case 'import':
-                return $this->cssImportRule($start);
-
-            case 'media':
-                return $this->mediaRule($start);
-
-            case '-moz-document':
-                return $this->mozDocumentRule($start, $name);
-
-            case 'supports':
-                return $this->supportsRule($start);
-
-            default:
-                return $this->unknownAtRule($start, $name);
-
-        }
+    private function forbiddenAtRule(int $start): never
+    {
+        $this->almostAnyValue();
+        $this->error("This at-rule isn't allowed in plain CSS.", $this->scanner->spanFrom($start));
     }
 
     private function cssImportRule(int $start): ImportRule
@@ -110,8 +109,21 @@ final class CssParser extends ScssParser
         $this->expectStatementSeparator('@import rule');
 
         return new ImportRule([
-            new StaticImport(new Interpolation([$url], $urlSpan), $this->scanner->spanFrom($start), $modifiers)
+            new StaticImport(new Interpolation([$url], $urlSpan), $this->scanner->spanFrom($start), $modifiers),
         ], $this->scanner->spanFrom($start));
+    }
+
+    protected function parentheses(): Expression
+    {
+        // Expressions are only allowed within calculations, but we verify this at
+        // evaluation time.
+        $start = $this->scanner->getPosition();
+        $this->scanner->expectChar('(');
+        $this->whitespace();
+        $expression = $this->expressionUntilComma();
+        $this->scanner->expectChar(')');
+
+        return new ParenthesizedExpression($expression, $this->scanner->spanFrom($start));
     }
 
     protected function identifierLike(): Expression
@@ -129,6 +141,10 @@ final class CssParser extends ScssParser
         }
 
         $beforeArguments = $this->scanner->getPosition();
+        // `namespacedExpression()` is just here to throw a clearer error.
+        if ($this->scanner->scanChar('.')) {
+            return $this->namespacedExpression($plain, $start);
+        }
         if (!$this->scanner->scanChar('(')) {
             return new StringExpression($identifier);
         }
@@ -151,14 +167,12 @@ final class CssParser extends ScssParser
             $this->scanner->expectChar(')');
         }
 
-        if ($plain === 'if' || (!isset(self::CSS_ALLOWED_FUNCTIONS[$plain]) && Compiler::isNativeFunction($plain))) {
+        if ($plain === 'if' || (!isset(self::CSS_ALLOWED_FUNCTIONS[$plain]) && FunctionRegistry::isBuiltinFunction($plain))) {
             $this->error("This function isn't allowed in plain CSS.", $this->scanner->spanFrom($start));
         }
 
-        return new InterpolatedFunctionExpression(
-            // Create a fake interpolation to force the function to be interpreted
-            // as plain CSS, rather than calling a user-defined function.
-            new Interpolation([new StringExpression($identifier)], $identifier->getSpan()),
+        return new FunctionExpression(
+            $plain,
             new ArgumentInvocation($arguments, [], $this->scanner->spanFrom($beforeArguments)),
             $this->scanner->spanFrom($start)
         );

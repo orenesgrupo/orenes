@@ -12,8 +12,10 @@
 
 namespace ScssPhp\ScssPhp\Parser;
 
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
-use ScssPhp\ScssPhp\SourceSpan\SourceFile;
+use League\Uri\Contracts\UriInterface;
+use SourceSpan\FileLocation;
+use SourceSpan\FileSpan;
+use SourceSpan\SourceFile;
 
 /**
  * A port of Dart's string_scanner package to be used by the parser.
@@ -21,8 +23,8 @@ use ScssPhp\ScssPhp\SourceSpan\SourceFile;
  * The scanner only supports UTF-8 strings.
  *
  * Differences with Dart:
- * - reading a character is reading a byte, not an UTF-16 code unit (as PHP strings are not UTF-16). The
- *   {@see readUtf8Char} method can be used to consume an UTF-8 char.
+ * - reading a character is reading a byte, not a UTF-16 code unit (as PHP strings are not UTF-16). The
+ *   {@see readUtf8Char} method can be used to consume a UTF-8 char.
  * - characters are represented as a single-char string, not as an integer with their UTF-16 char code
  * - offsets are based on bytes, not on UTF-16 code units. In practice, parsing Sass generally needs
  *   to peak following chars only when already knowing that the current char is an ASCII one, which
@@ -36,27 +38,16 @@ use ScssPhp\ScssPhp\SourceSpan\SourceFile;
  */
 class StringScanner
 {
-    /**
-     * @var string
-     * @readonly
-     */
-    private $string;
+    private readonly string $string;
 
-    /**
-     * @var int
-     */
-    private $position = 0;
+    private int $position = 0;
 
-    /**
-     * @var SourceFile
-     * @readonly
-     */
-    private $sourceFile;
+    private readonly SourceFile $sourceFile;
 
-    public function __construct(string $content, ?string $sourceUrl = null)
+    public function __construct(string $content, ?UriInterface $sourceUrl = null)
     {
         $this->string = $content;
-        $this->sourceFile = new SourceFile($content, $sourceUrl);
+        $this->sourceFile = SourceFile::fromString($content, $sourceUrl);
     }
 
     public function getString(): string
@@ -76,9 +67,15 @@ class StringScanner
 
     public function spanFrom(int $start, ?int $end = null): FileSpan
     {
-        $end = $end ?? $this->position;
+        return $this->sourceFile->span($start, $end ?? $this->position);
+    }
 
-        return $this->sourceFile->span($start, $end);
+    /**
+     * The current location of the scanner.
+     */
+    public function getLocation(): FileLocation
+    {
+        return $this->sourceFile->location($this->position);
     }
 
     /**
@@ -133,9 +130,7 @@ class StringScanner
     }
 
     /**
-     * Consumes the next character in the string if it the provided character.
-     *
-     * @param string $char
+     * Consumes the next character in the string if it is the provided character.
      *
      * @return bool Whether the character was consumed.
      *
@@ -158,8 +153,6 @@ class StringScanner
 
     /**
      * Consumes the provided string if it appears at the current position.
-     *
-     * @param string $string
      *
      * @return bool Whether the string was consumed.
      *
@@ -198,11 +191,6 @@ class StringScanner
      * the expected name of the character being matched; if it's `null`, the
      * character itself is used instead.
      *
-     * @param string      $character
-     * @param string|null $name
-     *
-     * @return void
-     *
      * @throws FormatException
      *
      * @phpstan-impure
@@ -221,10 +209,6 @@ class StringScanner
     }
 
     /**
-     * @param string $string
-     *
-     * @return void
-     *
      * @throws FormatException
      *
      * @phpstan-impure
@@ -256,10 +240,6 @@ class StringScanner
      * The offset can be negative to peek already seen characters.
      * Returns null if the offset goes out of range.
      * This does not affect the position or the last match.
-     *
-     * @param int $offset
-     *
-     * @return string|null
      */
     public function peekChar(int $offset = 0): ?string
     {
@@ -276,11 +256,6 @@ class StringScanner
      * Returns the substring of the string between $start and $end (excluded).
      *
      * $end defaults to the current position.
-     *
-     * @param int      $start
-     * @param int|null $end
-     *
-     * @return string
      */
     public function substring(int $start, ?int $end = null): string
     {
@@ -297,8 +272,6 @@ class StringScanner
 
     /**
      * The scanner's current (zero-based) line number.
-     *
-     * @return int
      */
     public function getLine(): int
     {
@@ -307,8 +280,6 @@ class StringScanner
 
     /**
      * The scanner's current (zero-based) column number.
-     *
-     * @return int
      */
     public function getColumn(): int
     {
@@ -316,18 +287,12 @@ class StringScanner
     }
 
     /**
-     * @param string   $message
-     * @param int|null $position
-     * @param int|null $length
-     *
      * @throws FormatException
-     *
-     * @return never-returns
      */
-    public function error(string $message, ?int $position = null, ?int $length = null)
+    public function error(string $message, ?int $position = null, ?int $length = null): never
     {
-        $position = $position ?? $this->position;
-        $length = $length ?? 0;
+        $position ??= $this->position;
+        $length ??= 0;
 
         $span = $this->sourceFile->span($position, $position + $length);
 
@@ -335,13 +300,9 @@ class StringScanner
     }
 
     /**
-     * @param string $message
-     *
      * @throws FormatException
-     *
-     * @return never-returns
      */
-    private function fail(string $message)
+    private function fail(string $message): never
     {
         $this->error("expected $message.");
     }

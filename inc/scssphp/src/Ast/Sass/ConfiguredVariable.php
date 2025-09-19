@@ -12,8 +12,8 @@
 
 namespace ScssPhp\ScssPhp\Ast\Sass;
 
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Util\SpanUtil;
+use SourceSpan\FileSpan;
 
 /**
  * A variable configured by a `with` clause in a `@use` or `@forward` rule.
@@ -22,29 +22,13 @@ use ScssPhp\ScssPhp\Util\SpanUtil;
  */
 final class ConfiguredVariable implements SassNode, SassDeclaration
 {
-    /**
-     * @var string
-     * @readonly
-     */
-    private $name;
+    private readonly string $name;
 
-    /**
-     * @var Expression
-     * @readonly
-     */
-    private $expression;
+    private readonly Expression $expression;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
-    /**
-     * @var bool
-     * @readonly
-     */
-    private $guarded;
+    private readonly bool $guarded;
 
     public function __construct(string $name, Expression $expression, FileSpan $span, bool $guarded = false)
     {

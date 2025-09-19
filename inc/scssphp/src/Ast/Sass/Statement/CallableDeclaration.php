@@ -14,7 +14,7 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\ArgumentDeclaration;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
+use SourceSpan\FileSpan;
 
 /**
  * An abstract class for callables (functions or mixins) that are declared in
@@ -26,36 +26,23 @@ use ScssPhp\ScssPhp\SourceSpan\FileSpan;
  */
 abstract class CallableDeclaration extends ParentStatement
 {
-    /**
-     * @var string
-     * @readonly
-     */
-    private $name;
+    private readonly string $name;
 
-    /**
-     * @var ArgumentDeclaration
-     * @readonly
-     */
-    private $arguments;
+    private readonly string $originalName;
 
-    /**
-     * @var SilentComment|null
-     * @readonly
-     */
-    private $comment;
+    private readonly ArgumentDeclaration $arguments;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly ?SilentComment $comment;
+
+    private readonly FileSpan $span;
 
     /**
      * @param Statement[] $children
      */
-    public function __construct(string $name, ArgumentDeclaration $arguments, FileSpan $span, array $children, ?SilentComment $comment = null)
+    public function __construct(string $originalName, ArgumentDeclaration $arguments, FileSpan $span, array $children, ?SilentComment $comment = null)
     {
-        $this->name = $name;
+        $this->originalName = $originalName;
+        $this->name = str_replace('_', '-', $originalName);
         $this->arguments = $arguments;
         $this->comment = $comment;
         $this->span = $span;
@@ -70,14 +57,19 @@ abstract class CallableDeclaration extends ParentStatement
         return $this->name;
     }
 
+    /**
+     * The callable's original name, without underscores converted to hyphens.
+     */
+    public function getOriginalName(): string
+    {
+        return $this->originalName;
+    }
+
     final public function getArguments(): ArgumentDeclaration
     {
         return $this->arguments;
     }
 
-    /**
-     * @return SilentComment|null
-     */
     final public function getComment(): ?SilentComment
     {
         return $this->comment;

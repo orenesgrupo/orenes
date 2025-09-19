@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * An `@extend` rule.
@@ -26,23 +26,11 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class ExtendRule implements Statement
 {
-    /**
-     * @var Interpolation
-     * @readonly
-     */
-    private $selector;
+    private readonly Interpolation $selector;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
-    /**
-     * @var bool
-     * @readonly
-     */
-    private $optional;
+    private readonly bool $optional;
 
     public function __construct(Interpolation $selector, FileSpan $span, bool $optional = false)
     {

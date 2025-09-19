@@ -16,9 +16,9 @@ use ScssPhp\ScssPhp\Ast\Sass\ArgumentInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\CallableInvocation;
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\SassReference;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Util\SpanUtil;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A function invocation.
@@ -31,35 +31,30 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
 final class FunctionExpression implements Expression, CallableInvocation, SassReference
 {
     /**
-     * The name of the function being invoked, with underscores left as-is.
+     * The name of the function being invoked, with underscores converted to
+     * hyphens.
      *
-     * @var string
-     * @readonly
+     * If this function is a plain CSS function, use {@see $originalName} instead.
      */
-    private $originalName;
+    private readonly string $name;
+
+    /**
+     * The name of the function being invoked, with underscores left as-is.
+     */
+    private readonly string $originalName;
 
     /**
      * The arguments to pass to the function.
-     *
-     * @var ArgumentInvocation
-     * @readonly
      */
-    private $arguments;
+    private readonly ArgumentInvocation $arguments;
 
     /**
      * The namespace of the function being invoked, or `null` if it's invoked
      * without a namespace.
-     *
-     * @var string|null
-     * @readonly
      */
-    private $namespace;
+    private readonly ?string $namespace;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(string $originalName, ArgumentInvocation $arguments, FileSpan $span, ?string $namespace = null)
     {
@@ -67,11 +62,9 @@ final class FunctionExpression implements Expression, CallableInvocation, SassRe
         $this->originalName = $originalName;
         $this->arguments = $arguments;
         $this->namespace = $namespace;
+        $this->name = str_replace('_', '-', $this->originalName);
     }
 
-    /**
-     * @return string
-     */
     public function getOriginalName(): string
     {
         return $this->originalName;
@@ -85,7 +78,7 @@ final class FunctionExpression implements Expression, CallableInvocation, SassRe
      */
     public function getName(): string
     {
-        return str_replace('_', '-', $this->originalName);
+        return $this->name;
     }
 
     public function getArguments(): ArgumentInvocation

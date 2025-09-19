@@ -13,8 +13,8 @@
 namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A silent Sass-style comment.
@@ -23,17 +23,9 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class SilentComment implements Statement
 {
-    /**
-     * @var string
-     * @readonly
-     */
-    private $text;
+    private readonly string $text;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     public function __construct(string $text, FileSpan $span)
     {

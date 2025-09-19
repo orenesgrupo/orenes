@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Expression;
 
 use ScssPhp\ScssPhp\Ast\Sass\Expression;
 use ScssPhp\ScssPhp\Ast\Sass\SupportsCondition;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * An expression-level `@supports` condition.
@@ -27,11 +27,7 @@ use ScssPhp\ScssPhp\Visitor\ExpressionVisitor;
  */
 final class SupportsExpression implements Expression
 {
-    /**
-     * @var SupportsCondition
-     * @readonly
-     */
-    private $condition;
+    private readonly SupportsCondition $condition;
 
     public function __construct(SupportsCondition $condition)
     {

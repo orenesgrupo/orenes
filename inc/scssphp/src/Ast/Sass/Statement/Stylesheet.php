@@ -12,15 +12,16 @@
 
 namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
+use League\Uri\Contracts\UriInterface;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
 use ScssPhp\ScssPhp\Exception\SassFormatException;
 use ScssPhp\ScssPhp\Logger\LoggerInterface;
 use ScssPhp\ScssPhp\Parser\CssParser;
+use ScssPhp\ScssPhp\Parser\SassParser;
 use ScssPhp\ScssPhp\Parser\ScssParser;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
-use ScssPhp\ScssPhp\SourceSpan\SourceFile;
 use ScssPhp\ScssPhp\Syntax;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A Sass stylesheet.
@@ -33,17 +34,9 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class Stylesheet extends ParentStatement
 {
-    /**
-     * @var bool
-     * @readonly
-     */
-    private $plainCss;
+    private readonly bool $plainCss;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     /**
      * @param Statement[] $children
@@ -71,42 +64,29 @@ final class Stylesheet extends ParentStatement
     }
 
     /**
-     * @param Syntax::* $syntax
-     *
      * @throws SassFormatException when parsing fails
      */
-    public static function parse(string $contents, string $syntax, ?LoggerInterface $logger = null, ?string $sourceUrl = null): self
+    public static function parse(string $contents, Syntax $syntax, ?LoggerInterface $logger = null, ?UriInterface $sourceUrl = null): self
     {
-        switch ($syntax) {
-            case Syntax::SASS:
-                return self::parseSass($contents, $logger, $sourceUrl);
-
-            case Syntax::SCSS:
-                return self::parseScss($contents, $logger, $sourceUrl);
-
-            case Syntax::CSS:
-                return self::parseCss($contents, $logger, $sourceUrl);
-
-            default:
-                throw new \InvalidArgumentException("Unknown syntax $syntax.");
-        }
+        return match ($syntax) {
+            Syntax::SASS => self::parseSass($contents, $logger, $sourceUrl),
+            Syntax::SCSS => self::parseScss($contents, $logger, $sourceUrl),
+            Syntax::CSS => self::parseCss($contents, $logger, $sourceUrl),
+        };
     }
 
     /**
      * @throws SassFormatException when parsing fails
      */
-    public static function parseSass(string $contents, ?LoggerInterface $logger = null, ?string $sourceUrl = null): self
+    public static function parseSass(string $contents, ?LoggerInterface $logger = null, ?UriInterface $sourceUrl = null): self
     {
-        $file = new SourceFile($contents, $sourceUrl);
-        $span = $file->span(0, 0);
-
-        throw new SassFormatException('The Sass indented syntax is not implemented.', $span);
+        return (new SassParser($contents, $logger, $sourceUrl))->parse();
     }
 
     /**
      * @throws SassFormatException when parsing fails
      */
-    public static function parseScss(string $contents, ?LoggerInterface $logger = null, ?string $sourceUrl = null): self
+    public static function parseScss(string $contents, ?LoggerInterface $logger = null, ?UriInterface $sourceUrl = null): self
     {
         return (new ScssParser($contents, $logger, $sourceUrl))->parse();
     }
@@ -114,7 +94,7 @@ final class Stylesheet extends ParentStatement
     /**
      * @throws SassFormatException when parsing fails
      */
-    public static function parseCss(string $contents, ?LoggerInterface $logger = null, ?string $sourceUrl = null): self
+    public static function parseCss(string $contents, ?LoggerInterface $logger = null, ?UriInterface $sourceUrl = null): self
     {
         return (new CssParser($contents, $logger, $sourceUrl))->parse();
     }

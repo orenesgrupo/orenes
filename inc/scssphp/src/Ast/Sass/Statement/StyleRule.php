@@ -14,8 +14,8 @@ namespace ScssPhp\ScssPhp\Ast\Sass\Statement;
 
 use ScssPhp\ScssPhp\Ast\Sass\Interpolation;
 use ScssPhp\ScssPhp\Ast\Sass\Statement;
-use ScssPhp\ScssPhp\SourceSpan\FileSpan;
 use ScssPhp\ScssPhp\Visitor\StatementVisitor;
+use SourceSpan\FileSpan;
 
 /**
  * A style rule.
@@ -28,17 +28,9 @@ use ScssPhp\ScssPhp\Visitor\StatementVisitor;
  */
 final class StyleRule extends ParentStatement
 {
-    /**
-     * @var Interpolation
-     * @readonly
-     */
-    private $selector;
+    private readonly Interpolation $selector;
 
-    /**
-     * @var FileSpan
-     * @readonly
-     */
-    private $span;
+    private readonly FileSpan $span;
 
     /**
      * @param Statement[] $children
