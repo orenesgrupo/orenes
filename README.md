@@ -1,6 +1,6 @@
 # Grupo Orenes WordPress Theme
 
-Tema padre para WordPress desarrollado por **Samuel E. Cerezo** para el Grupo Orenes.  
+Tema padre para WordPress desarrollado por **Samuel E. Cerezo** para **Grupo Orenes**.  
 Diseñado como un **naked theme** optimizado, con integración con Elementor y soporte extendido para SCSS, tipografías y recursos modernos.
 
 ---
