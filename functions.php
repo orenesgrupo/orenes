@@ -13,7 +13,7 @@ require_once get_template_directory().'/inc/scssphp/scss.inc.php';
 use ScssPhp\ScssPhp\Compiler;
 
 // Configuraciones iniciales
-define('THEME_VERSION', '2.2.0');
+define('THEME_VERSION', '2.2.1');
 define('THEME_SLUG', 'orenes');
 
 add_action('after_setup_theme', function () {
@@ -91,13 +91,6 @@ add_action('send_headers', function () {
 
 	header('Content-Security-Policy: '.implode('; ', $lines));
 
-	/* Ejemplo en child:
-	add_filter('csp_policies', function ($policies) {
-		$policies['img-src'][] = 'https://mi.cdn.com';
-		$policies['script-src'][] = 'https://cdn.miapp.com';
-		return $policies;
-	});
-	*/
 });
 
 // Utilidades comunes
@@ -221,10 +214,47 @@ add_action('init', function () {
 add_action('cleanup_weekly', 'cleanup_core');
 
 function cleanup_core(): void {
+
 	foreach (['readme.html','wp-config-sample.php','licencia.txt','license.txt'] as $root) {
 		$path = ABSPATH.$root;
 		if (is_file($path) && is_writable($path)) { @unlink($path); }
 	}
+
+	$theme_dir = get_template_directory();
+
+	$dirs = [
+		$theme_dir.'/.git',
+	];
+	$files = [
+		$theme_dir.'/.gitattributes',
+		$theme_dir.'/.gitignore',
+		$theme_dir.'/LICENSE',
+		$theme_dir.'/README.md',
+		$theme_dir.'/readme.md',
+	];
+
+	foreach ($dirs as $dir) {
+		rmdir_recursive($dir);
+	}
+	foreach ($files as $file) {
+		if (is_file($file) && is_writable($file)) {
+			@unlink($file);
+		}
+	}
+
+}
+
+// Helper para borrado recursivo
+function rmdir_recursive(string $dir): void {
+	$dir = rtrim($dir, '/');
+	if (!is_dir($dir)) return;
+	foreach (scandir($dir) ?: [] as $item) {
+		if ($item === '.' || $item === '..') continue;
+		$path = $dir . '/' . $item;
+		if (is_dir($path)) { rmdir_recursive($path); }
+		elseif (is_writable($path)) { @unlink($path); }
+	}
+	@rmdir($dir);
 }
 
 // SVG seguro
@@ -299,17 +329,6 @@ add_action('elementor/frontend/the_content', function ($content) {
 
 	return $content;
 });
-
-/*
-// Ejemplos:
-// add_filter('content_placeholders', function ($r) { $r['{{site}}'] = esc_html(get_bloginfo('name')); return $r; });
-// add_filter('content_links', function ($resolver) {
-// 	return function ($kind, $id) use ($resolver) {
-// 		if (strtolower($kind) === 'user') { return get_author_posts_url((int) $id) ?: null; }
-// 		return $resolver($kind, (int) $id);
-// 	};
-// });
-*/
 
 // Carga recursiva de funciones
 function directory_include(string $dir, bool $recursive = true): void {
