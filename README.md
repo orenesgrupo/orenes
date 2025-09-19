@@ -159,12 +159,16 @@ Este tema está distribuido con la misma licencia que WordPress.
 
 ---
 
-## Créditos
+## Librerías usadas
 
-- [`SCSSPHP 2.0.1`](https://scssphp.github.io/scssphp/)
-- [`Mapbox GL JS 3.15.0`](https://docs.mapbox.com/mapbox-gl-js/guides)
-- [`animejs 4.1.3`](https://animejs.com/)
-- [`WOW.js 1.3.0`](https://wowjs.uk/)
+[SCSSPHP 2.0.1](https://scssphp.github.io/scssphp/)
+[Mapbox GL JS 3.15.0](https://docs.mapbox.com/mapbox-gl-js/guides)
+[animejs 4.1.3](https://animejs.com/)
+[WOW.js 1.3.0](https://wowjs.uk/)
+
+---
+
+## Créditos
 
 Desarrollado por **Samuel E. Cerezo**.  
 © Grupo Orenes.
