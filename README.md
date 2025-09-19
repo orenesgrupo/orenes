@@ -51,6 +51,8 @@ Diseñado como un **naked theme** optimizado, con integración con Elementor y s
 
 ## Instalación
 
+Se recomienda usar el [instalador de WordPress de Grupo Orenes](https://github.com/orenesgrupo/wp-install). Automatiza el proceso descargando e instalando la última versión de WordPress, aplicando medidas de seguridad, y descarga e instala el tema WordPress de Grupo Orenes, creando automáticamente un tema hijo personalizado.
+
 1. Clonar o descargar el repositorio en el directorio de temas de WordPress:
    ```bash
    git clone https://github.com/orenesgrupo/orenes.git wp-content/themes/orenes
