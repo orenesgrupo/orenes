@@ -175,6 +175,9 @@ add_action('wp_enqueue_scripts', function () {
 	$main = get_stylesheet_directory().'/js/main.js';
 	if (!file_exists($main)) { wp_mkdir_p(dirname($main)); file_put_contents($main, ""); }
 	wp_enqueue_script('main', get_stylesheet_directory_uri().'/js/main.js', ['orenes'], asset_version($main), true);
+
+	$fonts = get_stylesheet_directory().'/fonts';
+	if (!is_dir($fonts)) { wp_mkdir_p($fonts); }
 }, 20);
 
 // Carga automática de archivos CSS y JS en área de administración
@@ -456,9 +459,23 @@ function fonts_cleanup(string $base): void {
 	}
 }
 
+function fonts_families(): array {
+	$dir = get_stylesheet_directory().'/fonts';
+	if (!is_dir($dir)) { return []; }
+	$families = [];
+	foreach (glob($dir . '/*', GLOB_ONLYDIR) ?: [] as $family_dir) {
+		$families[] = fonts_family(basename($family_dir));
+	}
+	$families = array_values(array_unique($families));
+	natsort($families);
+	return $families;
+}
+
 // Scaffold mínimo en child
 add_action('after_switch_theme', function () {
 	foreach ([get_stylesheet_directory().'/scss/main.scss', get_stylesheet_directory().'/scss/admin.scss', get_stylesheet_directory().'/js/main.js', get_stylesheet_directory().'/js/admin.js'] as $file) {
 		if (!file_exists($file)) { wp_mkdir_p(dirname($file)); file_put_contents($file, ''); }
 	}
+	$fonts = get_stylesheet_directory().'/fonts';
+	if (!is_dir($fonts)) { wp_mkdir_p($fonts); }
 });

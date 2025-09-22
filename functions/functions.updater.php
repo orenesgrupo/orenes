@@ -103,7 +103,7 @@ function theme_info(): array {
 add_filter('pre_set_site_transient_update_themes', function ($transient) {
 	$current = theme_info();
 	$release = fetch_release();
-	if (!$rel) { return $transient; }
+	if (!$release) { return $transient; }
 
 	$check = preg_match('~^\d+\.\d+\.\d+~', $release['version']) && preg_match('~^\d+\.\d+\.\d+~', $current['version']);
 	$newer = $check ? version_compare($release['version'], $current['version'], '>') : ($release['version'] !== $current['version']);
