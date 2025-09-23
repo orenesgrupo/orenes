@@ -13,7 +13,7 @@ require_once get_template_directory().'/inc/scssphp/scss.inc.php';
 use ScssPhp\ScssPhp\Compiler;
 
 // Configuraciones iniciales
-define('THEME_VERSION', '2.3.0');
+define('THEME_VERSION', '2.3.1');
 define('THEME_SLUG', 'orenes');
 
 add_action('after_setup_theme', function () {
