@@ -13,7 +13,7 @@ require_once get_template_directory().'/inc/scssphp/scss.inc.php';
 use ScssPhp\ScssPhp\Compiler;
 
 // Configuraciones iniciales
-define('THEME_VERSION', '2.2.1');
+define('THEME_VERSION', '2.3.0');
 define('THEME_SLUG', 'orenes');
 
 add_action('after_setup_theme', function () {
@@ -76,6 +76,9 @@ add_action('send_headers', function () {
 			'https://www.google.com','https://*.youtube.com','https://*.youtube-nocookie.com','https://*.covermanager.com',
 			'https://tpc.googlesyndication.com','https://*.doubleclick.net','https://*.googletagmanager.com',
 			'https://www.google.com/recaptcha/','https://www.recaptcha.net','https://archive.org',
+		],
+		'frame-ancestors' => [
+			'https://github.com'
 		],
 		'worker-src' => ["'self'", 'blob:'],
 	];
@@ -199,6 +202,8 @@ add_action('admin_enqueue_scripts', function () {
 		} catch (\Throwable $e) { }
 	}
 
+	wp_enqueue_script(THEME_SLUG, get_template_directory_uri().'/js/admin.js', ['jquery'], asset_version($js), true);
+
 	wp_enqueue_style('admin', get_stylesheet_directory_uri().'/css/admin.css', [], asset_version($css));
 	wp_enqueue_script('admin', get_stylesheet_directory_uri().'/js/admin.js', ['jquery'], asset_version($js), true);
 }, 20);
@@ -223,19 +228,20 @@ function cleanup_core(): void {
 		if (is_file($path) && is_writable($path)) { @unlink($path); }
 	}
 
-	$theme_dir = get_template_directory();
+	$theme = get_template_directory();
+	$child = get_stylesheet_directory();
 
 	$dirs = [
-		$theme_dir.'/.git',
+		$theme.'/.git',
 	];
 	$files = [
-		$theme_dir.'/.gitattributes',
-		$theme_dir.'/.gitignore',
-		$theme_dir.'/LICENSE',
-		$theme_dir.'/README.md',
-		$theme_dir.'/readme.md',
-		$theme_dir.'/CHANGELOG.md',
-		$theme_dir.'/changelog.md'
+		$theme.'/.gitattributes',
+		$theme.'/.gitignore',
+		$theme.'/LICENSE',
+		$theme.'/README.md',
+		$theme.'/readme.md',
+		$theme.'/CHANGELOG.md',
+		$theme.'/changelog.md'
 	];
 
 	foreach ($dirs as $dir) {
@@ -244,6 +250,21 @@ function cleanup_core(): void {
 	foreach ($files as $file) {
 		if (is_file($file) && is_writable($file)) {
 			@unlink($file);
+		}
+	}
+
+	foreach ([$theme, $child] as $dir) {
+		if (is_dir($dir)) {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+				RecursiveIteratorIterator::CHILD_FIRST
+			);
+
+			foreach ($iterator as $file) {
+				if ($file->isFile() && $file->getFilename() === '.DS_Store' && is_writable($file->getPathname())) {
+					@unlink($file->getPathname());
+				}
+			}
 		}
 	}
 
