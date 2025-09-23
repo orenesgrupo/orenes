@@ -2,8 +2,6 @@
 /**
  * Grupo Orenes - Tema WordPress
  * Desarrollado por Samuel E. Cerezo
- * 
- * 2.2.0
  */
 
 defined('ABSPATH') || exit;
