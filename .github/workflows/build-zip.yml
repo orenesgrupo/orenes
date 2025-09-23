@@ -1,0 +1,43 @@
+name: Build WordPress Theme Zip
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Clonar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Preparar carpeta temporal 'orenes'
+      - name: Prepare theme folder
+        run: |
+          rm -rf orenes
+          mkdir orenes
+          # Copiar solo los archivos del tema necesarios
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='README.md' \
+            --exclude='LICENSE' \
+            --exclude='tests' \
+            --exclude='.DS_Store' \
+            ./ orenes/
+
+      # 3. Crear zip con carpeta raíz 'orenes'
+      - name: Create zip
+        run: |
+          rm -f orenes.zip
+          zip -r orenes.zip orenes
+
+      # 4. Subir el zip como release asset
+      - name: Upload zip to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: orenes.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
